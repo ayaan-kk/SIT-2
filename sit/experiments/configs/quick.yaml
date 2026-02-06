@@ -1,0 +1,74 @@
+# SIT Quick Configuration
+# Small grid for pipeline validation
+# Runtime: ~2-5 minutes
+
+experiment:
+  name: "SIT-quick"
+  mode: "quick"
+
+devices:
+  - embedded_a
+  - laptop_a
+  - server_a
+
+targets:
+  - rpc_microservice
+  - kv_lookup
+  - inference_request
+
+spectators:
+  - cache_thrash
+  - membw_saturator
+  - tlb_stress
+  - light_background
+
+distances:
+  - same_core
+  - same_numa
+  - cross_socket
+
+loads:
+  - 0.3
+  - 0.6
+  - 0.9
+
+regimes:
+  - benign
+  - structured
+  - adversarial
+
+seeds:
+  - 42
+  - 137
+
+trials_per_condition: 10
+samples_per_trial: 200
+n_bootstrap: 500
+
+irbs:
+  n_trials: 10
+  n_samples: 200
+  drift_bias_repeats: 20
+
+tomography:
+  n_bootstrap: 500
+  recovery_max_trials: 20
+  recovery_repeats: 10
+  recovery_trial_counts: [4, 8, 12, 16, 20]
+  k_values: [1, 3]
+
+scheduling:
+  n_slots: 3
+  beta_ucb: 2.0
+  lambda_risk: 1.0
+  lambda_div: 1.0
+  lambda_slo: 2.0
+
+output:
+  raw_dir: "data/raw"
+  derived_dir: "data/derived"
+  figures_dir: "results/figures"
+  tables_dir: "results/tables"
+  workbook_dir: "results/workbook"
+  report_dir: "results/report"
+  manifest_dir: "results/manifest"

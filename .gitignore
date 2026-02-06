@@ -1,0 +1,4 @@
+data/raw/
+SIT_artifact.zip
+__pycache__/
+*.pyc

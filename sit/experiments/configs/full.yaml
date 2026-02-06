@@ -1,0 +1,91 @@
+# SIT Full Configuration
+# Complete grid for publication-quality results
+# Grid: 5 devices x 5 targets x 10 spectators x 5 distances x 5 loads x 3 regimes x 4 seeds
+# = 75,000 conditions x 16 trials = 1,200,000 trials (200K+ at 300 samples = 360M samples)
+
+experiment:
+  name: "SIT-full"
+  mode: "full"
+
+devices:
+  - embedded_a
+  - laptop_a
+  - workstation_a
+  - server_a
+  - arm_server_a
+
+targets:
+  - rpc_microservice
+  - inference_request
+  - realtime_control
+  - kv_lookup
+  - streaming_frame
+
+spectators:
+  - cache_thrash
+  - membw_saturator
+  - tlb_stress
+  - numa_remote
+  - prefetch_adversary
+  - io_burst
+  - pagefault_heavy
+  - thermal_stress
+  - mixed_cache_membw
+  - light_background
+
+distances:
+  - same_core
+  - same_llc
+  - same_numa
+  - cross_numa
+  - cross_socket
+
+loads:
+  - 0.1
+  - 0.3
+  - 0.5
+  - 0.7
+  - 0.9
+
+regimes:
+  - benign
+  - structured
+  - adversarial
+
+seeds:
+  - 42
+  - 137
+  - 314
+  - 1729
+
+trials_per_condition: 16
+samples_per_trial: 300
+n_bootstrap: 1000
+
+irbs:
+  n_trials: 16
+  n_samples: 300
+  drift_bias_repeats: 40
+
+tomography:
+  n_bootstrap: 1000
+  recovery_max_trials: 40
+  recovery_repeats: 20
+  recovery_trial_counts: [4, 8, 12, 16, 20, 30, 40]
+  k_values: [1, 3]
+
+scheduling:
+  n_slots: 3
+  beta_ucb: 2.0
+  lambda_risk: 1.0
+  lambda_div: 1.0
+  lambda_slo: 2.0
+
+output:
+  raw_dir: "data/raw"
+  derived_dir: "data/derived"
+  figures_dir: "results/figures"
+  tables_dir: "results/tables"
+  workbook_dir: "results/workbook"
+  report_dir: "results/report"
+  manifest_dir: "results/manifest"

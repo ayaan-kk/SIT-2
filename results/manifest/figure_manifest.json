@@ -1,0 +1,191 @@
+[
+  {
+    "figure_id": "F1",
+    "title": "IRBS Drift-Bias Demonstration",
+    "description": "Histogram of naive vs IRBS treatment-effect estimates under synthetic drift, plus bar chart of bias magnitude.",
+    "output_path": "results/figures/F1_irbs_bias_demo.png",
+    "output_path_pdf": "results/figures/F1_irbs_bias_demo.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "Single target-spectator pair, structured regime, mid load/distance",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/drift_bias_demo.csv"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F2",
+    "title": "Tail Explosion Under Load and Distance",
+    "description": "Load ladder and distance ladder showing p99 and CVaR99 growth for a high-interference target-spectator pair.",
+    "output_path": "results/figures/F2_phenomenon_ladder.png",
+    "output_path_pdf": "results/figures/F2_phenomenon_ladder.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "First target and spectator from config, all loads/distances/regimes",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F3",
+    "title": "Interference Tomography Heatmap with Uncertainty",
+    "description": "Heatmap of delta-p99 for every target-spectator pair with bootstrap confidence intervals annotated in each cell.",
+    "output_path": "results/figures/F3_tomography_heatmap.png",
+    "output_path_pdf": "results/figures/F3_tomography_heatmap.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "Reference device, mid distance, mid load, structured regime, aggregated over seeds",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/tomography_mean.csv",
+      "data/derived/tomography_ci_lower.csv",
+      "data/derived/tomography_ci_upper.csv"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F4",
+    "title": "Sparse Interferer Recovery Curve",
+    "description": "Recovery probability for top-1 and top-3 interferer identification as a function of trials per spectator.",
+    "output_path": "results/figures/F4_sparse_recovery.png",
+    "output_path_pdf": "results/figures/F4_sparse_recovery.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "First target, reference device, mid distance/load, structured regime",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/recovery_curve.csv"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F5",
+    "title": "Baseline Model Mismatch Scatter",
+    "description": "Scatter of predicted (naive model) vs observed delta-p99, highlighting systematic underprediction in the upper tail.",
+    "output_path": "results/figures/F5_baseline_mismatch.png",
+    "output_path_pdf": "results/figures/F5_baseline_mismatch.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All target-spectator pairs, all loads and distances",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/mismatch_scatter.csv"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F6",
+    "title": "Scheduler Comparison Across Regimes",
+    "description": "Grouped bar chart of p99 and CVaR99 for each scheduler policy, split by benign / structured / adversarial regime.",
+    "output_path": "results/figures/F6_scheduler_comparison.png",
+    "output_path_pdf": "results/figures/F6_scheduler_comparison.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All schedulers, grouped by regime",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F7",
+    "title": "Worst-Case Blowup Avoidance (Top 10% Conditions)",
+    "description": "Horizontal bar chart of p99 for each scheduler on the hardest 10% of conditions as identified by the random baseline.",
+    "output_path": "results/figures/F7_worst_case.png",
+    "output_path_pdf": "results/figures/F7_worst_case.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "Top 10% conditions by random-scheduler p99, adversarial regime",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F8",
+    "title": "Ablation Study: Component Contributions",
+    "description": "Side-by-side bar charts of p99 and CVaR99 across ablation variants (full SIT-DPP, no-DPP, no-risk, random, etc.).",
+    "output_path": "results/figures/F8_ablations.png",
+    "output_path_pdf": "results/figures/F8_ablations.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All scheduling conditions, aggregated",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/ablations.csv"
+    ],
+    "git_commit": "unknown",
+    "data_available": true
+  },
+  {
+    "figure_id": "F9",
+    "title": "QA Check Summary",
+    "description": "Table of pass/fail results for automated QA checks (fixed-ratio, monotonicity, seed reproducibility, CVaR >= p99).",
+    "output_path": "results/figures/F9_qa_summary.png",
+    "output_path_pdf": "results/figures/F9_qa_summary.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All QA checks",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [],
+    "git_commit": "unknown",
+    "data_available": true
+  }
+]
