@@ -1040,8 +1040,86 @@ def _build_cross_validation(wb: openpyxl.Workbook, config: Dict, all_results: Di
     _auto_column_widths(ws)
 
 
+def _build_anchoring(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """Sheet 13: Anchoring -- real-system calibrated results."""
+    ws = wb.create_sheet("Anchoring")
+    row = _write_title(ws, 1, 1, "Real-System Anchoring Experiment")
+    row += 1
+
+    anchoring_summary = all_results.get("anchoring_summary")
+    if anchoring_summary is None or len(anchoring_summary) == 0:
+        ws.cell(row=row, column=1, value="No anchoring data available").font = _VALUE_FONT
+        _auto_column_widths(ws)
+        return
+
+    # Write data table
+    headers = ["Scenario", "Random p99", "SIT-DPP p99", "p99 Reduction %",
+               "Random CVaR99", "SIT-DPP CVaR99", "CVaR99 Reduction %"]
+    for ci, h in enumerate(headers, 1):
+        ws.cell(row=row, column=ci, value=h)
+    _style_header_row(ws, row, len(headers))
+    data_start = row + 1
+    row += 1
+
+    for _, r in anchoring_summary.iterrows():
+        ws.cell(row=row, column=1, value=str(r.get("scenario", ""))).font = _VALUE_FONT
+        ws.cell(row=row, column=2, value=round(_safe_float(r.get("random_p99")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=3, value=round(_safe_float(r.get("sit_p99")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=4, value=round(_safe_float(r.get("p99_reduction_pct")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=5, value=round(_safe_float(r.get("random_cvar99")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=6, value=round(_safe_float(r.get("sit_cvar99")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=7, value=round(_safe_float(r.get("cvar99_reduction_pct")), 1)).font = _VALUE_FONT
+        row += 1
+    data_end = row - 1
+
+    # p99 bar chart
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "p99 Latency: Random vs SIT-DPP (Calibrated Scenarios)"
+    chart.y_axis.title = "p99 Latency (us)"
+    chart.x_axis.title = "Scenario"
+    chart.width = 20
+    chart.height = 12
+
+    cats = Reference(ws, min_col=1, min_row=data_start, max_row=data_end)
+    random_vals = Reference(ws, min_col=2, min_row=data_start - 1, max_row=data_end)
+    sit_vals = Reference(ws, min_col=3, min_row=data_start - 1, max_row=data_end)
+    chart.add_data(random_vals, titles_from_data=True)
+    chart.add_data(sit_vals, titles_from_data=True)
+    chart.set_categories(cats)
+    for i, s in enumerate(chart.series):
+        s.graphicalProperties.solidFill = _CHART_COLORS[i % len(_CHART_COLORS)]
+    row += 1
+    ws.add_chart(chart, f"A{row}")
+    row += 16
+
+    # CVaR99 bar chart
+    chart2 = BarChart()
+    chart2.type = "col"
+    chart2.style = 10
+    chart2.title = "CVaR99 Latency: Random vs SIT-DPP (Calibrated Scenarios)"
+    chart2.y_axis.title = "CVaR99 Latency (us)"
+    chart2.x_axis.title = "Scenario"
+    chart2.width = 20
+    chart2.height = 12
+
+    random_cvar = Reference(ws, min_col=5, min_row=data_start - 1, max_row=data_end)
+    sit_cvar = Reference(ws, min_col=6, min_row=data_start - 1, max_row=data_end)
+    chart2.add_data(random_cvar, titles_from_data=True)
+    chart2.add_data(sit_cvar, titles_from_data=True)
+    chart2.set_categories(cats)
+    for i, s in enumerate(chart2.series):
+        s.graphicalProperties.solidFill = _CHART_COLORS[i % len(_CHART_COLORS)]
+    row += 1
+    ws.add_chart(chart2, f"A{row}")
+    row += 16
+
+    _auto_column_widths(ws)
+
+
 def _build_figure_manifest(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
-    """Sheet 13: Figure_Manifest."""
+    """Sheet 14: Figure_Manifest."""
     ws = wb.create_sheet("Figure_Manifest")
     row = _write_title(ws, 1, 1, "Figure Manifest")
     row += 1
@@ -1065,6 +1143,7 @@ def _build_figure_manifest(wb: openpyxl.Workbook, config: Dict, all_results: Dic
         ("F9", "QA Check Summary", "F9_qa_summary"),
         ("F10", "Channel Decomposition", "F10_channel_decomposition"),
         ("F11", "Sensitivity Analysis", "F11_sensitivity"),
+        ("F12", "Real-System Anchoring Experiment", "F12_anchoring_experiment"),
     ]
 
     for fig_id, desc, basename in manifest:
@@ -1142,6 +1221,7 @@ def create_workbook(config: Dict, all_results: Dict) -> str:
     _build_channel_decomposition(wb, config, all_results)
     _build_sensitivity(wb, config, all_results)
     _build_cross_validation(wb, config, all_results)
+    _build_anchoring(wb, config, all_results)
     _build_figure_manifest(wb, config, all_results)
     _build_how_to_recompute(wb, config, all_results)
 

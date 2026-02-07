@@ -1366,6 +1366,110 @@ def plot_f11_sensitivity(
 
 
 # ===================================================================
+# F12: Real-system anchoring experiment
+# ===================================================================
+
+def plot_f12_anchoring(anchoring_summary, output_dir: str = "results/figures"):
+    """F12: Real-system anchoring -- calibrated simulation results.
+
+    Grouped bar chart comparing Random vs SIT-DPP p99 for each
+    calibrated real-system scenario (Triton, Redis, gRPC), with
+    error bars and reduction annotations.
+    """
+    if isinstance(anchoring_summary, pd.DataFrame) and len(anchoring_summary) == 0:
+        return
+
+    df = anchoring_summary
+    scenarios = df["scenario"].tolist()
+    n = len(scenarios)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+
+    # --- Panel A: p99 comparison ---
+    ax = axes[0]
+    x = np.arange(n)
+    width = 0.32
+
+    random_p99 = df["random_p99"].values
+    sit_p99 = df["sit_p99"].values
+    random_err_lo = random_p99 - df["random_p99_ci_lo"].values
+    random_err_hi = df["random_p99_ci_hi"].values - random_p99
+    sit_err_lo = sit_p99 - df["sit_p99_ci_lo"].values
+    sit_err_hi = df["sit_p99_ci_hi"].values - sit_p99
+
+    bars_r = ax.bar(x - width/2, random_p99, width, label="Random Placement",
+                    color=COLORS["RANDOM_RED"], alpha=0.85, edgecolor="white",
+                    yerr=[random_err_lo, random_err_hi], capsize=4)
+    bars_s = ax.bar(x + width/2, sit_p99, width, label="SIT-DPP",
+                    color=COLORS["SIT_GREEN"], alpha=0.85, edgecolor="white",
+                    yerr=[sit_err_lo, sit_err_hi], capsize=4)
+
+    # Annotate reductions
+    for i in range(n):
+        red_pct = df["p99_reduction_pct"].values[i]
+        y_max = max(random_p99[i], sit_p99[i]) * 1.08
+        ax.annotate(
+            f"-{red_pct:.0f}%", xy=(x[i], y_max),
+            fontsize=11, fontweight="bold", ha="center", va="bottom",
+            color=COLORS["SIT_GREEN"],
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([s.replace(" ", "\n") for s in scenarios], fontsize=10)
+    ax.set_ylabel("p99 Latency (us)", fontsize=12)
+    ax.set_title("A. p99 Latency: Random vs SIT-DPP", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=10, loc="upper right")
+    ax.grid(axis="y", alpha=0.3)
+    ax.set_axisbelow(True)
+
+    # --- Panel B: CVaR99 comparison ---
+    ax2 = axes[1]
+    random_cvar = df["random_cvar99"].values
+    sit_cvar = df["sit_cvar99"].values
+
+    bars_r2 = ax2.bar(x - width/2, random_cvar, width, label="Random Placement",
+                      color=COLORS["RANDOM_RED"], alpha=0.85, edgecolor="white")
+    bars_s2 = ax2.bar(x + width/2, sit_cvar, width, label="SIT-DPP",
+                      color=COLORS["SIT_GREEN"], alpha=0.85, edgecolor="white")
+
+    for i in range(n):
+        red_pct = df["cvar99_reduction_pct"].values[i]
+        y_max = max(random_cvar[i], sit_cvar[i]) * 1.08
+        ax2.annotate(
+            f"-{red_pct:.0f}%", xy=(x[i], y_max),
+            fontsize=11, fontweight="bold", ha="center", va="bottom",
+            color=COLORS["SIT_GREEN"],
+        )
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([s.replace(" ", "\n") for s in scenarios], fontsize=10)
+    ax2.set_ylabel("CVaR99 Latency (us)", fontsize=12)
+    ax2.set_title("B. CVaR99 Latency: Random vs SIT-DPP", fontsize=13, fontweight="bold")
+    ax2.legend(fontsize=10, loc="upper right")
+    ax2.grid(axis="y", alpha=0.3)
+    ax2.set_axisbelow(True)
+
+    fig.suptitle(
+        "F12: Real-System Anchoring -- Calibrated Simulation Results",
+        fontsize=16, fontweight="bold", y=1.02,
+    )
+
+    # Add calibration note
+    fig.text(
+        0.5, -0.02,
+        "Simulator parameters calibrated to published Triton, Redis, and gRPC latency benchmarks.\n"
+        "See Section 5.10 for calibration methodology and references.",
+        fontsize=8, ha="center", va="top", color=COLORS["NEUTRAL_GRAY"],
+        style="italic",
+    )
+
+    _add_watermark(fig, "[Calibrated Simulation]")
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F12_anchoring_experiment", output_dir)
+
+
+# ===================================================================
 # Master generator
 # ===================================================================
 
@@ -1498,5 +1602,15 @@ def generate_all_figures(results: Dict, output_dir: str = "results/figures"):
             print(f"  F11 FAILED: {e}")
     else:
         print("  F11 skipped (no sched_results / sensitivity_df).")
+
+    # F12
+    if "anchoring_summary" in results:
+        try:
+            plot_f12_anchoring(results["anchoring_summary"], output_dir)
+            print("  F12 done.")
+        except Exception as e:
+            print(f"  F12 FAILED: {e}")
+    else:
+        print("  F12 skipped (no anchoring_summary).")
 
     print("Figure generation complete.")

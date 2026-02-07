@@ -951,6 +951,40 @@ def phase8d_cross_validation(config: Dict, all_results: Dict) -> Dict:
     return all_results
 
 
+def phase8e_anchoring(config: Dict, all_results: Dict) -> Dict:
+    """Phase 8e: Real-system anchoring experiment."""
+    print("\n" + "=" * 70)
+    print("PHASE 8e: Real-System Anchoring Experiment")
+    print("=" * 70)
+
+    from sit.experiments.anchoring import run_anchoring_experiment
+
+    n_trials = config["irbs"]["n_trials"]
+    n_samples = config["irbs"]["n_samples"]
+    n_seeds = len(config["seeds"])
+    n_slots = config.get("scheduling", {}).get("n_slots", 3)
+
+    anchoring = run_anchoring_experiment(
+        n_trials=n_trials,
+        n_samples=n_samples,
+        n_slots=n_slots,
+        n_seeds=n_seeds,
+    )
+
+    # Save results
+    derived_dir = config["output"]["derived_dir"]
+    anchoring["anchoring_df"].to_csv(f"{derived_dir}/anchoring_results.csv", index=False)
+    anchoring["anchoring_summary"].to_csv(f"{derived_dir}/anchoring_summary.csv", index=False)
+    anchoring["anchoring_tomo"].to_csv(f"{derived_dir}/anchoring_tomo.csv", index=False)
+
+    all_results["anchoring_df"] = anchoring["anchoring_df"]
+    all_results["anchoring_summary"] = anchoring["anchoring_summary"]
+    all_results["anchoring_tomo"] = anchoring["anchoring_tomo"]
+
+    print(f"Anchoring experiment complete: {len(anchoring['anchoring_summary'])} scenarios")
+    return all_results
+
+
 def phase9_qa_checks(config: Dict, all_results: Dict) -> Dict:
     """Phase 9: Expanded QA checks (25+ tests)."""
     print("\n" + "=" * 70)
@@ -1320,6 +1354,7 @@ def main():
     all_results = phase8b_channel_decomposition(config, all_results)
     all_results = phase8c_sensitivity_analysis(config, all_results)
     all_results = phase8d_cross_validation(config, all_results)
+    all_results = phase8e_anchoring(config, all_results)
     all_results = phase9_qa_checks(config, all_results)
     all_results = phase10_figures_and_tables(config, all_results)
     all_results = phase11_workbook(config, all_results)
