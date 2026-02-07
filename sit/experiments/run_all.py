@@ -749,8 +749,210 @@ def phase8_worst_case(config: Dict, all_results: Dict) -> Dict:
     return all_results
 
 
+def phase8b_channel_decomposition(config: Dict, all_results: Dict) -> Dict:
+    """Phase 8b: Channel decomposition analysis."""
+    print("\n" + "=" * 70)
+    print("PHASE 8b: Channel Decomposition Analysis")
+    print("=" * 70)
+
+    from sit.simulator.interference_channels import compute_interference_severity, compute_channel_overlap
+    from sit.simulator.workloads import CHANNELS
+
+    targets_dict = get_targets()
+    spectators_dict = get_spectators()
+    devices_dict = get_device_profiles()
+
+    ref_device = devices_dict[config["devices"][0]]
+    ref_load = config["loads"][len(config["loads"]) // 2]
+
+    rows = []
+    for t_name in config["targets"]:
+        target = targets_dict[t_name]
+        for s_name in config["spectators"]:
+            spectator = spectators_dict[s_name]
+            for regime in ["structured", "adversarial"]:
+                for dist in ["same_core", "same_numa", "cross_socket"]:
+                    severity, per_ch, spike_prob = compute_interference_severity(
+                        target, spectator, ref_device, dist, ref_load, regime
+                    )
+                    overlap = compute_channel_overlap(target, spectator)
+                    for c_idx, ch_name in enumerate(CHANNELS):
+                        rows.append({
+                            "target": t_name, "spectator": s_name,
+                            "regime": regime, "distance": dist,
+                            "channel": ch_name,
+                            "per_channel_severity": float(per_ch[c_idx]),
+                            "channel_overlap": float(overlap[c_idx]),
+                            "total_severity": severity,
+                            "spike_probability": spike_prob,
+                        })
+
+    channel_df = pd.DataFrame(rows)
+    channel_df.to_csv(f"{config['output']['derived_dir']}/channel_decomposition.csv", index=False)
+
+    # Summary: which channels dominate
+    ch_totals = channel_df.groupby("channel")["per_channel_severity"].sum().sort_values(ascending=False)
+    print("Channel contribution ranking:")
+    for ch, val in ch_totals.items():
+        pct = val / ch_totals.sum() * 100 if ch_totals.sum() > 0 else 0
+        print(f"  {ch}: {pct:.1f}%")
+
+    all_results["channel_df"] = channel_df
+    return all_results
+
+
+def phase8c_sensitivity_analysis(config: Dict, all_results: Dict) -> Dict:
+    """Phase 8c: Sensitivity analysis - how SIT improvement varies with parameters."""
+    print("\n" + "=" * 70)
+    print("PHASE 8c: Sensitivity Analysis")
+    print("=" * 70)
+
+    sched_df = all_results.get("sched_results", pd.DataFrame())
+    if len(sched_df) == 0:
+        print("  SKIP: no scheduling results")
+        return all_results
+
+    sensitivity_rows = []
+
+    # Sensitivity to load
+    for load_val in sched_df["load"].unique():
+        subset = sched_df[sched_df["load"] == load_val]
+        for regime in subset["regime"].unique():
+            r_sub = subset[subset["regime"] == regime]
+            sit_p99 = r_sub[r_sub["scheduler"] == "sit_dpp"]["p99"].mean()
+            rand_p99 = r_sub[r_sub["scheduler"] == "random"]["p99"].mean()
+            sit_cvar = r_sub[r_sub["scheduler"] == "sit_dpp"]["cvar99"].mean()
+            rand_cvar = r_sub[r_sub["scheduler"] == "random"]["cvar99"].mean()
+            if rand_p99 > 0:
+                sensitivity_rows.append({
+                    "parameter": "load", "value": load_val, "regime": regime,
+                    "sit_p99": sit_p99, "random_p99": rand_p99,
+                    "sit_cvar99": sit_cvar, "random_cvar99": rand_cvar,
+                    "p99_reduction_pct": (rand_p99 - sit_p99) / rand_p99 * 100,
+                    "cvar99_reduction_pct": (rand_cvar - sit_cvar) / rand_cvar * 100 if rand_cvar > 0 else 0,
+                })
+
+    # Sensitivity to distance
+    for dist_val in sched_df["distance"].unique():
+        subset = sched_df[sched_df["distance"] == dist_val]
+        for regime in subset["regime"].unique():
+            r_sub = subset[subset["regime"] == regime]
+            sit_p99 = r_sub[r_sub["scheduler"] == "sit_dpp"]["p99"].mean()
+            rand_p99 = r_sub[r_sub["scheduler"] == "random"]["p99"].mean()
+            sit_cvar = r_sub[r_sub["scheduler"] == "sit_dpp"]["cvar99"].mean()
+            rand_cvar = r_sub[r_sub["scheduler"] == "random"]["cvar99"].mean()
+            if rand_p99 > 0:
+                sensitivity_rows.append({
+                    "parameter": "distance", "value": dist_val, "regime": regime,
+                    "sit_p99": sit_p99, "random_p99": rand_p99,
+                    "sit_cvar99": sit_cvar, "random_cvar99": rand_cvar,
+                    "p99_reduction_pct": (rand_p99 - sit_p99) / rand_p99 * 100,
+                    "cvar99_reduction_pct": (rand_cvar - sit_cvar) / rand_cvar * 100 if rand_cvar > 0 else 0,
+                })
+
+    # Sensitivity to device
+    for dev_val in sched_df["device"].unique():
+        subset = sched_df[sched_df["device"] == dev_val]
+        sit_p99 = subset[subset["scheduler"] == "sit_dpp"]["p99"].mean()
+        rand_p99 = subset[subset["scheduler"] == "random"]["p99"].mean()
+        sit_cvar = subset[subset["scheduler"] == "sit_dpp"]["cvar99"].mean()
+        rand_cvar = subset[subset["scheduler"] == "random"]["cvar99"].mean()
+        if rand_p99 > 0:
+            sensitivity_rows.append({
+                "parameter": "device", "value": dev_val, "regime": "all",
+                "sit_p99": sit_p99, "random_p99": rand_p99,
+                "sit_cvar99": sit_cvar, "random_cvar99": rand_cvar,
+                "p99_reduction_pct": (rand_p99 - sit_p99) / rand_p99 * 100,
+                "cvar99_reduction_pct": (rand_cvar - sit_cvar) / rand_cvar * 100 if rand_cvar > 0 else 0,
+            })
+
+    sensitivity_df = pd.DataFrame(sensitivity_rows)
+    sensitivity_df.to_csv(f"{config['output']['derived_dir']}/sensitivity_analysis.csv", index=False)
+
+    # Print key insights
+    if len(sensitivity_df) > 0:
+        load_sens = sensitivity_df[sensitivity_df["parameter"] == "load"]
+        if len(load_sens) > 0:
+            best_load = load_sens.loc[load_sens["p99_reduction_pct"].idxmax()]
+            print(f"  Best p99 reduction at load={best_load['value']}: {best_load['p99_reduction_pct']:.1f}%")
+        dist_sens = sensitivity_df[sensitivity_df["parameter"] == "distance"]
+        if len(dist_sens) > 0:
+            best_dist = dist_sens.loc[dist_sens["p99_reduction_pct"].idxmax()]
+            print(f"  Best p99 reduction at dist={best_dist['value']}: {best_dist['p99_reduction_pct']:.1f}%")
+
+    all_results["sensitivity_df"] = sensitivity_df
+    return all_results
+
+
+def phase8d_cross_validation(config: Dict, all_results: Dict) -> Dict:
+    """Phase 8d: Cross-validation of tomography predictions."""
+    print("\n" + "=" * 70)
+    print("PHASE 8d: Tomography Cross-Validation")
+    print("=" * 70)
+
+    irbs_results = all_results.get("irbs_results", {})
+    if not irbs_results:
+        print("  SKIP: no IRBS results")
+        return all_results
+
+    seeds = config["seeds"]
+    if len(seeds) < 2:
+        print("  SKIP: need at least 2 seeds for cross-validation")
+        return all_results
+
+    ref_device = config["devices"][0]
+    ref_distance = config["distances"][len(config["distances"]) // 2]
+    ref_load = config["loads"][len(config["loads"]) // 2]
+    ref_regime = "structured"
+
+    cv_rows = []
+    for hold_out_seed in seeds:
+        train_seeds = [s for s in seeds if s != hold_out_seed]
+
+        for t_name in config["targets"]:
+            for s_name in config["spectators"]:
+                # Train: aggregate effects from non-held-out seeds
+                train_effects = []
+                for seed in train_seeds:
+                    key = (t_name, s_name, ref_device, ref_distance, ref_load, ref_regime, seed)
+                    if key in irbs_results:
+                        train_effects.append(irbs_results[key]["effects"]["delta_p99"])
+
+                # Test: held-out seed
+                test_key = (t_name, s_name, ref_device, ref_distance, ref_load, ref_regime, hold_out_seed)
+                if test_key not in irbs_results or not train_effects:
+                    continue
+
+                test_effect = irbs_results[test_key]["effects"]["delta_p99"]
+                train_mean = np.mean(train_effects)
+
+                cv_rows.append({
+                    "target": t_name, "spectator": s_name,
+                    "hold_out_seed": hold_out_seed,
+                    "train_prediction": train_mean,
+                    "test_observed": test_effect,
+                    "abs_error": abs(train_mean - test_effect),
+                    "relative_error": abs(train_mean - test_effect) / max(abs(test_effect), 1.0),
+                })
+
+    cv_df = pd.DataFrame(cv_rows)
+    if len(cv_df) > 0:
+        cv_df.to_csv(f"{config['output']['derived_dir']}/cross_validation.csv", index=False)
+        mae = cv_df["abs_error"].mean()
+        mre = cv_df["relative_error"].mean()
+        corr = np.corrcoef(cv_df["train_prediction"], cv_df["test_observed"])[0, 1]
+        print(f"  Leave-one-seed-out CV: MAE={mae:.1f}, MRE={mre:.2%}, r={corr:.3f}")
+        all_results["cv_mae"] = mae
+        all_results["cv_correlation"] = corr
+    else:
+        print("  SKIP: no cross-validation data generated")
+
+    all_results["cv_df"] = cv_df
+    return all_results
+
+
 def phase9_qa_checks(config: Dict, all_results: Dict) -> Dict:
-    """Phase 9: QA checks."""
+    """Phase 9: Expanded QA checks (25+ tests)."""
     print("\n" + "=" * 70)
     print("PHASE 9: QA Checks")
     print("=" * 70)
@@ -758,64 +960,208 @@ def phase9_qa_checks(config: Dict, all_results: Dict) -> Dict:
     qa_results = {}
 
     sched_df = all_results.get("sched_results", pd.DataFrame())
+    trial_df = all_results.get("trial_df", pd.DataFrame())
 
-    # 1. Fixed ratio check
+    # 1. Fixed ratio check (scheduling)
     if len(sched_df) > 0 and all(c in sched_df.columns for c in ["mean", "p99", "cvar99"]):
         passed, msg = check_no_fixed_ratio(
             sched_df["mean"].values,
             sched_df["p99"].values,
             sched_df["cvar99"].values,
         )
-        qa_results["fixed_ratio"] = {"passed": passed, "message": msg}
-        print(f"  Fixed ratio check: {'PASS' if passed else 'FAIL'} - {msg}")
+        qa_results["fixed_ratio_sched"] = {"passed": passed, "message": msg}
+        print(f"  Fixed ratio (sched): {'PASS' if passed else 'FAIL'} - {msg}")
     else:
-        qa_results["fixed_ratio"] = {"passed": True, "message": "Insufficient data"}
+        qa_results["fixed_ratio_sched"] = {"passed": True, "message": "Insufficient data"}
 
-    # 2. Monotonicity check
-    if len(sched_df) > 0 and "load" in sched_df.columns and "p99" in sched_df.columns:
+    # 2. Fixed ratio check (trials)
+    if len(trial_df) > 0 and all(c in trial_df.columns for c in ["mean", "p99", "cvar99"]):
+        passed, msg = check_no_fixed_ratio(
+            trial_df["mean"].values,
+            trial_df["p99"].values,
+            trial_df["cvar99"].values,
+        )
+        qa_results["fixed_ratio_trials"] = {"passed": passed, "message": msg}
+        print(f"  Fixed ratio (trials): {'PASS' if passed else 'FAIL'} - {msg}")
+    else:
+        qa_results["fixed_ratio_trials"] = {"passed": True, "message": "Insufficient data"}
+
+    # 3. Monotonicity (load vs p99, adversarial)
+    if len(sched_df) > 0 and "load" in sched_df.columns:
         adv = sched_df[sched_df["regime"] == "adversarial"] if "regime" in sched_df.columns else sched_df
         if len(adv) > 0:
             load_means = adv.groupby("load")["p99"].mean()
-            passed, vr, msg = check_monotonicity(
-                load_means.index.values.astype(float),
-                load_means.values,
-            )
+            passed, vr, msg = check_monotonicity(load_means.index.values.astype(float), load_means.values)
             qa_results["monotonicity_load_p99"] = {"passed": passed, "message": msg, "violation_rate": vr}
             print(f"  Monotonicity (load vs p99): {'PASS' if passed else 'FAIL'} - {msg}")
-        else:
-            qa_results["monotonicity_load_p99"] = {"passed": True, "message": "No adversarial data"}
-    else:
-        qa_results["monotonicity_load_p99"] = {"passed": True, "message": "Insufficient data"}
 
-    # 3. Seed reproducibility (spot check)
-    from sit.simulator.latency_generator import generate_trial_samples
-    from sit.simulator.workloads import get_targets
-    from sit.simulator.device_profiles import get_device_profiles
+    # 4. Monotonicity (load vs cvar99, adversarial)
+    if len(sched_df) > 0 and "load" in sched_df.columns and "cvar99" in sched_df.columns:
+        adv = sched_df[sched_df["regime"] == "adversarial"] if "regime" in sched_df.columns else sched_df
+        if len(adv) > 0:
+            load_means = adv.groupby("load")["cvar99"].mean()
+            passed, vr, msg = check_monotonicity(load_means.index.values.astype(float), load_means.values)
+            qa_results["monotonicity_load_cvar99"] = {"passed": passed, "message": msg}
+            print(f"  Monotonicity (load vs cvar99): {'PASS' if passed else 'FAIL'} - {msg}")
+
+    # 5-6. Monotonicity for structured regime
+    if len(sched_df) > 0 and "load" in sched_df.columns:
+        struc = sched_df[sched_df["regime"] == "structured"] if "regime" in sched_df.columns else sched_df
+        if len(struc) > 0:
+            for metric in ["p99", "cvar99"]:
+                if metric in struc.columns:
+                    load_means = struc.groupby("load")[metric].mean()
+                    passed, vr, msg = check_monotonicity(load_means.index.values.astype(float), load_means.values)
+                    qa_results[f"monotonicity_load_{metric}_structured"] = {"passed": passed, "message": msg}
+                    print(f"  Monotonicity (load vs {metric}, structured): {'PASS' if passed else 'FAIL'} - {msg}")
+
+    # 7. Seed reproducibility
     targets = get_targets()
     devices = get_device_profiles()
     t = list(targets.values())[0]
     d = list(devices.values())[0]
-    s1 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100,
-                                np.random.default_rng(12345))
-    s2 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100,
-                                np.random.default_rng(12345))
+    s1 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100, np.random.default_rng(12345))
+    s2 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100, np.random.default_rng(12345))
     seed_pass = np.allclose(s1, s2)
     qa_results["seed_reproducibility"] = {
-        "passed": seed_pass,
-        "message": "Same seed produces identical samples" if seed_pass else "SEED MISMATCH"
+        "passed": seed_pass, "message": "Same seed produces identical samples" if seed_pass else "SEED MISMATCH"
     }
     print(f"  Seed reproducibility: {'PASS' if seed_pass else 'FAIL'}")
 
-    # 4. CVaR >= p99 check
+    # 8. Seed reproducibility with spectator
+    spectators = get_spectators()
+    sp = list(spectators.values())[0]
+    s1 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100, np.random.default_rng(54321), spectator=sp)
+    s2 = generate_trial_samples(t, d, 0.5, "same_core", "structured", 100, np.random.default_rng(54321), spectator=sp)
+    seed_pass2 = np.allclose(s1, s2)
+    qa_results["seed_reproducibility_treatment"] = {
+        "passed": seed_pass2, "message": "Treatment seed reproducible" if seed_pass2 else "SEED MISMATCH"
+    }
+    print(f"  Seed reproducibility (treatment): {'PASS' if seed_pass2 else 'FAIL'}")
+
+    # 9. CVaR >= p99 (scheduling)
     if len(sched_df) > 0 and "p99" in sched_df.columns and "cvar99" in sched_df.columns:
         cvar_ge_p99 = (sched_df["cvar99"] >= sched_df["p99"] - 1e-6).all()
-        qa_results["cvar_ge_p99"] = {
+        qa_results["cvar_ge_p99_sched"] = {
             "passed": bool(cvar_ge_p99),
-            "message": "CVaR99 >= p99 for all rows" if cvar_ge_p99 else "CVaR99 < p99 found!"
+            "message": f"CVaR99 >= p99 for all {len(sched_df)} rows" if cvar_ge_p99 else "CVaR99 < p99 found!"
         }
-        print(f"  CVaR99 >= p99: {'PASS' if cvar_ge_p99 else 'FAIL'}")
-    else:
-        qa_results["cvar_ge_p99"] = {"passed": True, "message": "Insufficient data"}
+        print(f"  CVaR99 >= p99 (sched): {'PASS' if cvar_ge_p99 else 'FAIL'}")
+
+    # 10. CVaR >= p99 (trials)
+    if len(trial_df) > 0 and "p99" in trial_df.columns and "cvar99" in trial_df.columns:
+        cvar_ge_p99 = (trial_df["cvar99"] >= trial_df["p99"] - 1e-6).all()
+        qa_results["cvar_ge_p99_trials"] = {
+            "passed": bool(cvar_ge_p99),
+            "message": f"CVaR99 >= p99 for all {len(trial_df)} trials" if cvar_ge_p99 else "CVaR99 < p99 found!"
+        }
+        print(f"  CVaR99 >= p99 (trials): {'PASS' if cvar_ge_p99 else 'FAIL'}")
+
+    # 11. p99 >= p95 (trials)
+    if len(trial_df) > 0 and "p99" in trial_df.columns and "p95" in trial_df.columns:
+        p99_ge = (trial_df["p99"] >= trial_df["p95"] - 1e-6).all()
+        qa_results["p99_ge_p95"] = {"passed": bool(p99_ge), "message": "p99 >= p95" if p99_ge else "p99 < p95!"}
+        print(f"  p99 >= p95: {'PASS' if p99_ge else 'FAIL'}")
+
+    # 12. All positive latencies
+    for col in ["mean", "p95", "p99", "cvar95", "cvar99"]:
+        if len(trial_df) > 0 and col in trial_df.columns:
+            all_pos = (trial_df[col] > 0).all()
+            qa_results[f"positive_{col}"] = {"passed": bool(all_pos), "message": f"All {col} > 0" if all_pos else f"Negative {col} found"}
+            print(f"  Positive {col}: {'PASS' if all_pos else 'FAIL'}")
+
+    # 17. SLO violation rate in [0,1]
+    if len(trial_df) > 0 and "slo_violation_rate" in trial_df.columns:
+        in_range = ((trial_df["slo_violation_rate"] >= -1e-6) & (trial_df["slo_violation_rate"] <= 1 + 1e-6)).all()
+        qa_results["slo_viol_range"] = {"passed": bool(in_range), "message": "SLO viol rate in [0,1]" if in_range else "Out of range!"}
+        print(f"  SLO violation range: {'PASS' if in_range else 'FAIL'}")
+
+    # 18. SIT-DPP beats random on average
+    if len(sched_df) > 0:
+        sit_p99 = sched_df[sched_df["scheduler"] == "sit_dpp"]["p99"].mean()
+        rand_p99 = sched_df[sched_df["scheduler"] == "random"]["p99"].mean()
+        beats = sit_p99 < rand_p99
+        qa_results["sit_beats_random_p99"] = {
+            "passed": beats,
+            "message": f"SIT p99={sit_p99:.0f} < Random p99={rand_p99:.0f}" if beats else "SIT does NOT beat random!"
+        }
+        print(f"  SIT beats random (p99): {'PASS' if beats else 'FAIL'}")
+
+    # 19. SIT-DPP beats random on CVaR
+    if len(sched_df) > 0 and "cvar99" in sched_df.columns:
+        sit_cvar = sched_df[sched_df["scheduler"] == "sit_dpp"]["cvar99"].mean()
+        rand_cvar = sched_df[sched_df["scheduler"] == "random"]["cvar99"].mean()
+        beats = sit_cvar < rand_cvar
+        qa_results["sit_beats_random_cvar99"] = {
+            "passed": beats,
+            "message": f"SIT CVaR={sit_cvar:.0f} < Random CVaR={rand_cvar:.0f}" if beats else "SIT does NOT beat random!"
+        }
+        print(f"  SIT beats random (cvar99): {'PASS' if beats else 'FAIL'}")
+
+    # 20. Tomography cross-validation correlation
+    cv_corr = all_results.get("cv_correlation", None)
+    if cv_corr is not None:
+        good = cv_corr > 0.5
+        qa_results["cv_correlation"] = {
+            "passed": good,
+            "message": f"CV correlation r={cv_corr:.3f}" + (" (good)" if good else " (weak!)")
+        }
+        print(f"  CV correlation: {'PASS' if good else 'WARN'} - r={cv_corr:.3f}")
+
+    # 21. Sparsity check (top-3 share should be significant)
+    sparsity_df = all_results.get("sparsity_df", pd.DataFrame())
+    if len(sparsity_df) > 0:
+        mean_top3 = sparsity_df["top3_share"].mean()
+        sparse = mean_top3 > 0.3  # top 3 should account for >30% of interference
+        qa_results["sparsity_significant"] = {
+            "passed": sparse,
+            "message": f"Mean top-3 share = {mean_top3:.1%}" + (" (sparse)" if sparse else " (not sparse)")
+        }
+        print(f"  Sparsity: {'PASS' if sparse else 'WARN'} - top-3 share={mean_top3:.1%}")
+
+    # 22. IRBS bias reduction
+    bias_df = all_results.get("bias_df", pd.DataFrame())
+    if len(bias_df) > 0:
+        true_tau = bias_df["true_tau"].iloc[0]
+        naive_bias = abs(bias_df["naive_tau"].mean() - true_tau)
+        irbs_bias = abs(bias_df["irbs_tau"].mean() - true_tau)
+        reduced = irbs_bias < naive_bias
+        qa_results["irbs_reduces_bias"] = {
+            "passed": reduced,
+            "message": f"|Naive bias|={naive_bias:.0f} > |IRBS bias|={irbs_bias:.0f}" if reduced else "IRBS not reducing bias!"
+        }
+        print(f"  IRBS reduces bias: {'PASS' if reduced else 'FAIL'}")
+
+    # 23. No NaN in results
+    if len(sched_df) > 0:
+        no_nan = not sched_df[["mean", "p99", "cvar99"]].isna().any().any()
+        qa_results["no_nan_sched"] = {"passed": no_nan, "message": "No NaN in scheduling results" if no_nan else "NaN found!"}
+        print(f"  No NaN (sched): {'PASS' if no_nan else 'FAIL'}")
+
+    # 24. Adversarial worse than benign
+    if len(sched_df) > 0 and "regime" in sched_df.columns:
+        adv_p99 = sched_df[sched_df["regime"] == "adversarial"]["p99"].mean()
+        ben_p99 = sched_df[sched_df["regime"] == "benign"]["p99"].mean()
+        worse = adv_p99 > ben_p99
+        qa_results["adversarial_worse"] = {
+            "passed": worse,
+            "message": f"Adv p99={adv_p99:.0f} > Benign p99={ben_p99:.0f}" if worse else "Adversarial not worse than benign!"
+        }
+        print(f"  Adversarial worse: {'PASS' if worse else 'FAIL'}")
+
+    # 25. Mismatch underprediction rate significant
+    mm = all_results.get("mismatch_metrics", {})
+    if "underprediction_rate" in mm:
+        under = mm["underprediction_rate"] > 0.4
+        qa_results["mismatch_underprediction"] = {
+            "passed": under,
+            "message": f"Underprediction rate = {mm['underprediction_rate']:.1%}" + (" (significant)" if under else " (not significant)")
+        }
+        print(f"  Mismatch underprediction: {'PASS' if under else 'WARN'} - {mm['underprediction_rate']:.1%}")
+
+    n_pass = sum(1 for v in qa_results.values() if v.get("passed", True))
+    n_total = len(qa_results)
+    print(f"\n  Summary: {n_pass}/{n_total} checks passed")
 
     all_results["qa_results"] = qa_results
     return all_results
@@ -971,6 +1317,9 @@ def main():
     all_results = phase6_drift_bias_demo(config, all_results)
     all_results = phase7_ablations(config, all_results)
     all_results = phase8_worst_case(config, all_results)
+    all_results = phase8b_channel_decomposition(config, all_results)
+    all_results = phase8c_sensitivity_analysis(config, all_results)
+    all_results = phase8d_cross_validation(config, all_results)
     all_results = phase9_qa_checks(config, all_results)
     all_results = phase10_figures_and_tables(config, all_results)
     all_results = phase11_workbook(config, all_results)

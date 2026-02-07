@@ -17,7 +17,7 @@
     "input_data": [
       "data/derived/drift_bias_demo.csv"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -38,7 +38,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -61,7 +61,7 @@
       "data/derived/tomography_ci_lower.csv",
       "data/derived/tomography_ci_upper.csv"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -82,7 +82,7 @@
     "input_data": [
       "data/derived/recovery_curve.csv"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -103,7 +103,7 @@
     "input_data": [
       "data/derived/mismatch_scatter.csv"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -124,7 +124,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -145,7 +145,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -166,7 +166,7 @@
     "input_data": [
       "data/derived/ablations.csv"
     ],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   },
   {
@@ -185,7 +185,7 @@
       1729
     ],
     "input_data": [],
-    "git_commit": "unknown",
+    "git_commit": "9e61ab214f3d4e10eeff0ba05295bd7ce05bc7a8",
     "data_available": true
   }
 ]
