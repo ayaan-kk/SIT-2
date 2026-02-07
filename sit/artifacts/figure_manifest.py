@@ -129,6 +129,162 @@ _FIGURE_CATALOGUE: List[Dict[str, Any]] = [
         "filters": "All QA checks",
         "input_data": [],
     },
+    {
+        "figure_id": "F10",
+        "filename": "F10_channel_decomposition",
+        "title": "Channel Decomposition Analysis",
+        "description": (
+            "Stacked bar chart of interference channel contributions "
+            "(LLC, MEM_BW, TLB, PREFETCH, NUMA, THERMAL, OS_FAULTS)."
+        ),
+        "result_key": "channel_decomp",
+        "filters": "All spectators, reference device, mid distance/load",
+        "input_data": ["data/derived/channel_decomposition.csv"],
+    },
+    {
+        "figure_id": "F11",
+        "filename": "F11_sensitivity_analysis",
+        "title": "Sensitivity Analysis",
+        "description": (
+            "Multi-panel plot showing p99 reduction sensitivity to "
+            "load, distance, and other experimental parameters."
+        ),
+        "result_key": "sensitivity_df",
+        "filters": "All parameter combinations, structured+adversarial regimes",
+        "input_data": ["data/derived/sensitivity_analysis.csv"],
+    },
+    {
+        "figure_id": "F12",
+        "filename": "F12_anchoring_experiment",
+        "title": "Real-System Anchoring",
+        "description": (
+            "Comparison of SIT vs random scheduling on anchoring scenarios "
+            "modeled after Triton (ResNet-50), Redis (GET), and gRPC."
+        ),
+        "result_key": "anchoring_summary",
+        "filters": "3 anchoring scenarios with published parameters",
+        "input_data": ["data/derived/anchoring_summary.csv"],
+    },
+    {
+        "figure_id": "F13",
+        "filename": "F13_pareto_frontier",
+        "title": "Pareto Frontier: Tail Safety vs Utilization",
+        "description": (
+            "Scatter plot of schedulers on the (utilization, p99) plane "
+            "with the Pareto frontier highlighted."
+        ),
+        "result_key": "pareto_summary",
+        "filters": "All schedulers, aggregated across conditions",
+        "input_data": ["data/derived/pareto_summary.csv"],
+    },
+    {
+        "figure_id": "F14",
+        "filename": "F14_probe_budget",
+        "title": "Probe Budget Curve",
+        "description": (
+            "Line plot of ranking quality (NDCG@k, Kendall tau) vs number "
+            "of probes for random, round-robin, UCB, and DPP strategies."
+        ),
+        "result_key": "probe_summary_df",
+        "filters": "Probe counts 2-20, 4 selection strategies",
+        "input_data": ["data/derived/probe_budget_summary.csv"],
+    },
+    {
+        "figure_id": "F15",
+        "filename": "F15_drift_robustness",
+        "title": "Drift Robustness Sweep",
+        "description": (
+            "Two-panel plot: (left) p99 reduction vs drift magnitude for "
+            "6 drift types, (right) per-type bars at reference magnitude."
+        ),
+        "result_key": "drift_summary_df",
+        "filters": "6 drift types, magnitudes 0-2x",
+        "input_data": ["data/derived/drift_summary.csv"],
+    },
+    {
+        "figure_id": "F16",
+        "filename": "F16_calibration",
+        "title": "Simulator Calibration vs Published Data",
+        "description": (
+            "Bar chart comparing published vs simulator p99 latencies "
+            "for Triton, Redis, and gRPC anchoring scenarios."
+        ),
+        "result_key": "anchoring_summary",
+        "filters": "3 anchoring scenarios",
+        "input_data": ["data/derived/anchoring_summary.csv"],
+    },
+    {
+        "figure_id": "F17",
+        "filename": "F17_tail_ecdf",
+        "title": "Tail Latency ECDF",
+        "description": (
+            "Complementary CDF (1-F(x)) of p99 latencies for each scheduler "
+            "on a log-x scale, showing tail behavior."
+        ),
+        "result_key": "sched_results",
+        "filters": "All scheduling results, all schedulers",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
+    {
+        "figure_id": "F18",
+        "filename": "F18_quantile_heatmap",
+        "title": "Per-Condition p99 Improvement Heatmap",
+        "description": (
+            "Heatmap of p99 reduction (SIT-DPP vs random) for each "
+            "target x device combination."
+        ),
+        "result_key": "sched_results",
+        "filters": "All target-device pairs, SIT-DPP vs random",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
+    {
+        "figure_id": "F19",
+        "filename": "F19_ci_coverage",
+        "title": "Bootstrap CI Coverage Reliability Diagram",
+        "description": (
+            "Reliability diagram showing observed CI coverage vs nominal "
+            "level for block bootstrap confidence intervals."
+        ),
+        "result_key": "ci_coverage_df",
+        "filters": "100 outer simulation repeats, nominal levels 80-99%",
+        "input_data": ["data/derived/ci_coverage.csv"],
+    },
+    {
+        "figure_id": "F20",
+        "filename": "F20_overhead_breakdown",
+        "title": "Pipeline Overhead Breakdown",
+        "description": (
+            "Horizontal bar chart of per-phase execution time showing "
+            "that overhead is a small fraction of total runtime."
+        ),
+        "result_key": "overhead_data",
+        "filters": "All pipeline phases",
+        "input_data": [],
+    },
+    {
+        "figure_id": "F21",
+        "filename": "F21_ablation_forest",
+        "title": "Ablation Forest Plot with Effect Sizes",
+        "description": (
+            "Forest plot showing p99 difference (SIT-DPP vs each baseline) "
+            "with bootstrap confidence intervals and Cohen's d."
+        ),
+        "result_key": "effect_size_df",
+        "filters": "All baselines vs SIT-DPP",
+        "input_data": ["data/derived/effect_sizes.csv"],
+    },
+    {
+        "figure_id": "F22",
+        "filename": "F22_tomography_diagnostics",
+        "title": "Tomography Identifiability Diagnostics",
+        "description": (
+            "Two-panel: (left) SVD spectrum of measurement matrix, "
+            "(right) OLS vs L1 vs non-negative L1 reconstruction comparison."
+        ),
+        "result_key": "tomo_diagnostics",
+        "filters": "Tomography matrix from Phase 2",
+        "input_data": ["data/derived/reconstruction_comparison.csv"],
+    },
 ]
 
 

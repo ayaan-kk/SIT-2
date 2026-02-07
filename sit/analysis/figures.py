@@ -15,6 +15,17 @@ F8:  Ablation panel (2x2 with waterfall)
 F9:  QA summary table
 F10: Channel decomposition (stacked bar)
 F11: Sensitivity analysis (2x2 panel)
+F12: Real-system anchoring experiment
+F13: Pareto frontier (tail safety vs utilization)
+F14: Probe budget curve (error vs probes)
+F15: Drift robustness (bias under drift)
+F16: Simulator calibration against published benchmarks
+F17: Tail ECDF (complementary CDF of p99 latencies)
+F18: Quantile improvement heatmap (p99 reduction by target x device)
+F19: CI coverage reliability diagram
+F20: Overhead breakdown (horizontal bar)
+F21: Ablation forest plot (component contribution)
+F22: Tomography identifiability diagnostics
 """
 
 import warnings
@@ -1470,6 +1481,866 @@ def plot_f12_anchoring(anchoring_summary, output_dir: str = "results/figures"):
 
 
 # ===================================================================
+# F13: Pareto Frontier (Tail safety vs utilization)
+# ===================================================================
+
+def plot_f13_pareto_frontier(pareto_summary, output_dir="results/figures"):
+    """F13: Pareto frontier -- scatter of tail safety vs utilization.
+
+    pareto_summary columns: scheduler, mean_p99, mean_utilization, is_pareto_optimal
+    """
+    if pareto_summary is None or len(pareto_summary) == 0:
+        print("Warning [F13]: pareto_summary is empty; skipping.")
+        return
+
+    df = pareto_summary.copy()
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    # Plot non-Pareto-optimal points first
+    non_optimal = df[~df["is_pareto_optimal"]]
+    optimal = df[df["is_pareto_optimal"]]
+
+    schedulers_all = df["scheduler"].unique().tolist()
+    # Assign colors per scheduler
+    sched_color_map = {}
+    fallback_colors = ["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51",
+                       "#7209b7", "#c1121f", "#1d3557", "#6c757d", "#40916c"]
+    for i, s in enumerate(schedulers_all):
+        sched_color_map[s] = SCHEDULER_COLORS.get(s, fallback_colors[i % len(fallback_colors)])
+
+    # Scatter: non-optimal as circles
+    for _, row in non_optimal.iterrows():
+        color = sched_color_map.get(row["scheduler"], COLORS["NEUTRAL_GRAY"])
+        ax.scatter(
+            row["mean_utilization"], row["mean_p99"],
+            s=100, color=color, alpha=0.7, edgecolors="white",
+            linewidths=0.8, zorder=3,
+        )
+        ax.annotate(
+            _nice_sched_name(row["scheduler"]),
+            xy=(row["mean_utilization"], row["mean_p99"]),
+            xytext=(8, 6), textcoords="offset points",
+            fontsize=8, color=color, alpha=0.85,
+        )
+
+    # Scatter: Pareto-optimal as stars
+    for _, row in optimal.iterrows():
+        color = sched_color_map.get(row["scheduler"], COLORS["SIT_GREEN"])
+        ax.scatter(
+            row["mean_utilization"], row["mean_p99"],
+            s=220, color=color, marker="*", edgecolors=COLORS["DARK_TEXT"],
+            linewidths=0.6, zorder=5, label=None,
+        )
+        ax.annotate(
+            _nice_sched_name(row["scheduler"]),
+            xy=(row["mean_utilization"], row["mean_p99"]),
+            xytext=(8, -10), textcoords="offset points",
+            fontsize=9, fontweight="bold", color=color,
+        )
+
+    # Draw Pareto frontier line connecting optimal points (sorted by utilization)
+    if len(optimal) > 1:
+        opt_sorted = optimal.sort_values("mean_utilization")
+        ax.plot(
+            opt_sorted["mean_utilization"].values,
+            opt_sorted["mean_p99"].values,
+            "--", color=COLORS["DARK_TEXT"], linewidth=1.5, alpha=0.5,
+            zorder=4, label="Pareto Frontier",
+        )
+
+    # Legend entries for marker types
+    ax.scatter([], [], s=100, color=COLORS["NEUTRAL_GRAY"], label="Non-optimal")
+    ax.scatter([], [], s=220, color=COLORS["NEUTRAL_GRAY"], marker="*",
+               edgecolors=COLORS["DARK_TEXT"], label="Pareto-optimal")
+
+    ax.set_xlabel("Mean Utilization")
+    ax.set_ylabel("Mean p99 Latency ($\\mu$s)  [lower is better]")
+    ax.legend(fontsize=9, frameon=True, loc="upper right")
+    ax.set_title(
+        "F13: Pareto Frontier -- Tail Safety vs Utilization",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F13_pareto_frontier", output_dir)
+
+
+# ===================================================================
+# F14: Probe Budget Curve (Error vs probes)
+# ===================================================================
+
+def plot_f14_probe_budget(probe_summary, output_dir="results/figures"):
+    """F14: Probe budget -- reconstruction quality vs measurement cost.
+
+    probe_summary columns: n_probes, strategy, mean_ndcg_k3, ci_lo, ci_hi
+    """
+    if probe_summary is None or len(probe_summary) == 0:
+        print("Warning [F14]: probe_summary is empty; skipping.")
+        return
+
+    df = probe_summary.copy()
+    fig, ax = plt.subplots(figsize=(10, 6.5))
+
+    strategy_colors = {
+        "random": COLORS["RANDOM_RED"],
+        "round_robin": COLORS["BASELINE_BLUE"],
+        "ucb": COLORS["WARN_ORANGE"],
+        "dpp": COLORS["SIT_GREEN"],
+    }
+    strategy_styles = {
+        "random": ("--", "o"),
+        "round_robin": ("-.", "s"),
+        "ucb": (":", "D"),
+        "dpp": ("-", "^"),
+    }
+
+    strategies = df["strategy"].unique().tolist()
+    # Sort so dpp is last (drawn on top)
+    preferred_order = ["random", "round_robin", "ucb", "dpp"]
+    strategies = [s for s in preferred_order if s in strategies] + \
+                 [s for s in strategies if s not in preferred_order]
+
+    for strat in strategies:
+        sdata = df[df["strategy"] == strat].sort_values("n_probes")
+        xs = sdata["n_probes"].values
+        ys = sdata["mean_ndcg_k3"].values
+        lo = sdata["ci_lo"].values
+        hi = sdata["ci_hi"].values
+
+        color = strategy_colors.get(strat, COLORS["NEUTRAL_GRAY"])
+        ls, marker = strategy_styles.get(strat, ("-", "o"))
+
+        ax.plot(
+            xs, ys, linestyle=ls, marker=marker, color=color,
+            linewidth=2.5, markersize=6,
+            label=strat.replace("_", " ").title(), zorder=3,
+        )
+        ax.fill_between(xs, lo, hi, alpha=0.15, color=color, zorder=2)
+
+    # Reference line at NDCG=0.9
+    ax.axhline(0.9, color=COLORS["NEUTRAL_GRAY"], linestyle=":", linewidth=1, alpha=0.6)
+    ax.text(ax.get_xlim()[0] + 0.5, 0.905, "NDCG@3 = 0.9", fontsize=8,
+            color=COLORS["NEUTRAL_GRAY"])
+
+    ax.set_xlabel("Number of Probes")
+    ax.set_ylabel("NDCG@3  [higher is better]")
+    ax.set_ylim(-0.03, 1.07)
+    ax.legend(fontsize=10, frameon=True, loc="lower right")
+    ax.set_title(
+        "F14: Probe Budget -- Reconstruction Quality vs Measurement Cost",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F14_probe_budget", output_dir)
+
+
+# ===================================================================
+# F15: Drift Robustness (Bias under drift)
+# ===================================================================
+
+def plot_f15_drift_robustness(drift_summary, output_dir="results/figures"):
+    """F15: Drift robustness -- IRBS vs naive estimator under drift.
+
+    drift_summary columns: drift_type, magnitude, mean_naive_bias, mean_irbs_bias
+    """
+    if drift_summary is None or len(drift_summary) == 0:
+        print("Warning [F15]: drift_summary is empty; skipping.")
+        return
+
+    df = drift_summary.copy()
+    fig, axes = plt.subplots(2, 1, figsize=(11, 10))
+
+    # ---- Panel A: Line plot by magnitude, averaged across drift types ----
+    ax = axes[0]
+    agg = df.groupby("magnitude").agg(
+        naive_bias=("mean_naive_bias", lambda x: np.mean(np.abs(x))),
+        irbs_bias=("mean_irbs_bias", lambda x: np.mean(np.abs(x))),
+    ).sort_index()
+
+    xs = agg.index.values.astype(float)
+    ax.plot(xs, agg["naive_bias"].values, "o-", color=COLORS["RANDOM_RED"],
+            linewidth=2.5, markersize=7, label="Naive (A-then-B)", zorder=3)
+    ax.plot(xs, agg["irbs_bias"].values, "s-", color=COLORS["SIT_GREEN"],
+            linewidth=2.5, markersize=7, label="IRBS (Interleaved)", zorder=3)
+
+    ax.fill_between(xs, 0, agg["naive_bias"].values, alpha=0.10,
+                    color=COLORS["RANDOM_RED"])
+    ax.fill_between(xs, 0, agg["irbs_bias"].values, alpha=0.10,
+                    color=COLORS["SIT_GREEN"])
+
+    ax.set_xlabel("Drift Magnitude")
+    ax.set_ylabel("|Bias| ($\\mu$s)")
+    ax.set_title("A. Mean |Bias| vs. Drift Magnitude (averaged across types)", fontsize=13)
+    ax.legend(fontsize=10, frameon=True)
+    ax.axhline(0, color=COLORS["DARK_TEXT"], linewidth=0.6, linestyle=":")
+
+    # ---- Panel B: Grouped bar chart by drift_type at highest magnitude ----
+    ax = axes[1]
+    max_mag = df["magnitude"].max()
+    high_mag = df[df["magnitude"] == max_mag].copy()
+
+    if len(high_mag) == 0:
+        ax.text(0.5, 0.5, "No data at highest magnitude",
+                transform=ax.transAxes, ha="center")
+    else:
+        drift_types = high_mag["drift_type"].unique().tolist()
+        n_types = len(drift_types)
+        x = np.arange(n_types)
+        width = 0.35
+
+        naive_vals = [float(np.abs(high_mag[high_mag["drift_type"] == dt]["mean_naive_bias"].mean()))
+                      for dt in drift_types]
+        irbs_vals = [float(np.abs(high_mag[high_mag["drift_type"] == dt]["mean_irbs_bias"].mean()))
+                     for dt in drift_types]
+
+        ax.bar(x - width / 2, naive_vals, width, color=COLORS["RANDOM_RED"],
+               alpha=0.85, edgecolor="white", label="Naive")
+        ax.bar(x + width / 2, irbs_vals, width, color=COLORS["SIT_GREEN"],
+               alpha=0.85, edgecolor="white", label="IRBS")
+
+        ax.set_xticks(x)
+        ax.set_xticklabels([dt.replace("_", " ").title() for dt in drift_types],
+                           fontsize=10, rotation=20, ha="right")
+        ax.set_ylabel("|Bias| ($\\mu$s)")
+        ax.set_title(f"B. |Bias| by Drift Type at Magnitude = {max_mag}", fontsize=13)
+        ax.legend(fontsize=10, frameon=True)
+
+        # Annotate reduction per drift type
+        for i in range(n_types):
+            if naive_vals[i] > 0:
+                red = (naive_vals[i] - irbs_vals[i]) / naive_vals[i] * 100
+                y_top = max(naive_vals[i], irbs_vals[i]) * 1.05
+                ax.text(x[i], y_top, f"-{red:.0f}%", ha="center", va="bottom",
+                        fontsize=9, fontweight="bold", color=COLORS["SIT_GREEN"])
+
+    fig.suptitle(
+        "F15: Drift Robustness -- IRBS vs Naive Estimator",
+        fontsize=16, fontweight="bold", y=1.01,
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F15_drift_robustness", output_dir)
+
+
+# ===================================================================
+# F16: Calibration Plot (Simulator vs published)
+# ===================================================================
+
+def plot_f16_calibration(anchoring_summary, output_dir="results/figures"):
+    """F16: Simulator calibration against published benchmarks.
+
+    anchoring_summary columns: scenario, baseline_p99_us, random_p99, sit_p99
+    """
+    if anchoring_summary is None or len(anchoring_summary) == 0:
+        print("Warning [F16]: anchoring_summary is empty; skipping.")
+        return
+
+    df = anchoring_summary.copy()
+    fig, ax = plt.subplots(figsize=(11, 7))
+
+    scenarios = df["scenario"].tolist()
+    n = len(scenarios)
+    x = np.arange(n)
+    width = 0.28
+
+    # Published baseline p99
+    published_vals = df["baseline_p99_us"].values.astype(float)
+    # Simulator baseline (random placement p99 as proxy)
+    sim_vals = df["random_p99"].values.astype(float)
+    # SIT p99
+    sit_vals = df["sit_p99"].values.astype(float)
+
+    ax.bar(x - width, published_vals, width, color=COLORS["BASELINE_BLUE"],
+           alpha=0.85, edgecolor="white", label="Published Baseline p99")
+    ax.bar(x, sim_vals, width, color=COLORS["WARN_ORANGE"],
+           alpha=0.85, edgecolor="white", label="Simulator Random p99")
+    ax.bar(x + width, sit_vals, width, color=COLORS["SIT_GREEN"],
+           alpha=0.85, edgecolor="white", label="Simulator SIT-DPP p99")
+
+    ax.set_yscale("log")
+    ax.set_xticks(x)
+    ax.set_xticklabels([s.replace(" ", "\n") for s in scenarios], fontsize=10)
+    ax.set_ylabel("p99 Latency ($\\mu$s) [log scale]")
+    ax.legend(fontsize=10, frameon=True, loc="upper right")
+
+    # Annotate ratio match
+    for i in range(n):
+        if published_vals[i] > 0:
+            ratio = sim_vals[i] / published_vals[i]
+            ax.text(x[i], max(published_vals[i], sim_vals[i]) * 1.3,
+                    f"Ratio: {ratio:.2f}x", ha="center", va="bottom",
+                    fontsize=8, color=COLORS["DARK_TEXT"],
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                              edgecolor=COLORS["GRID_GRAY"], alpha=0.8))
+
+    ax.set_title(
+        "F16: Simulator Calibration Against Published Benchmarks",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig, "[Calibrated Simulation]")
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F16_calibration", output_dir)
+
+
+# ===================================================================
+# F17: Tail ECDF (complementary CDF)
+# ===================================================================
+
+def plot_f17_tail_ecdf(sched_df_or_results, output_dir="results/figures"):
+    """F17: Tail ECDF -- complementary CDF of p99 latencies.
+
+    sched_df_or_results: DataFrame with columns including scheduler, regime, p99.
+    Plots 1x2 panel for structured and adversarial regimes.
+    """
+    if sched_df_or_results is None or len(sched_df_or_results) == 0:
+        print("Warning [F17]: sched_df is empty; skipping.")
+        return
+
+    df = sched_df_or_results.copy()
+    if "scheduler" not in df.columns or "p99" not in df.columns:
+        print("Warning [F17]: required columns missing; skipping.")
+        return
+
+    target_regimes = ["structured", "adversarial"]
+    if "regime" not in df.columns:
+        target_regimes = ["all"]
+
+    n_panels = len(target_regimes)
+    fig, axes_arr = plt.subplots(1, n_panels, figsize=(7 * n_panels, 6))
+    if n_panels == 1:
+        axes_arr = [axes_arr]
+
+    focus_schedulers = ["random", "sit_dpp", "static_partition"]
+    sched_styles = {
+        "random": ("--", COLORS["RANDOM_RED"]),
+        "sit_dpp": ("-", COLORS["SIT_GREEN"]),
+        "static_partition": (":", COLORS["NEUTRAL_GRAY"]),
+    }
+
+    for idx, regime in enumerate(target_regimes):
+        ax = axes_arr[idx]
+        if regime == "all":
+            rdata = df
+        else:
+            rdata = df[df["regime"] == regime]
+
+        if len(rdata) == 0:
+            ax.text(0.5, 0.5, f"No data for {regime}",
+                    transform=ax.transAxes, ha="center")
+            continue
+
+        # Determine p90 threshold across all schedulers for tail focus
+        all_p99 = rdata["p99"].values.astype(float)
+        p90_threshold = float(np.percentile(all_p99, 90))
+
+        for sched in focus_schedulers:
+            sdata = rdata[rdata["scheduler"] == sched]
+            if len(sdata) == 0:
+                continue
+            vals = np.sort(sdata["p99"].values.astype(float))
+
+            # Complementary CDF: 1 - F(x)
+            ccdf = 1.0 - np.arange(1, len(vals) + 1) / len(vals)
+
+            # Filter to tail region (>= p90)
+            tail_mask = vals >= p90_threshold
+            if tail_mask.sum() < 2:
+                tail_mask = np.ones(len(vals), dtype=bool)
+
+            ls, color = sched_styles.get(sched, ("-", COLORS["NEUTRAL_GRAY"]))
+            ax.plot(
+                vals[tail_mask], ccdf[tail_mask],
+                linestyle=ls, color=color, linewidth=2.5,
+                label=_nice_sched_name(sched), zorder=3,
+            )
+
+        ax.set_yscale("log")
+        ax.set_xlabel("p99 Latency ($\\mu$s)")
+        ax.set_ylabel("Complementary CDF: P(X > x)")
+        regime_title = regime.capitalize() if regime != "all" else "All Regimes"
+        ax.set_title(f"{regime_title} Regime", fontsize=13)
+        ax.legend(fontsize=10, frameon=True, loc="upper right")
+
+        # Mark the p90 threshold
+        ax.axvline(p90_threshold, color=COLORS["GRID_GRAY"], linestyle=":",
+                   linewidth=1, alpha=0.7)
+        ax.text(p90_threshold, ax.get_ylim()[1] * 0.5, f"  p90={p90_threshold:.0f}",
+                fontsize=8, color=COLORS["NEUTRAL_GRAY"], va="center")
+
+    fig.suptitle(
+        "F17: Tail Latency ECDF -- Random vs SIT-DPP",
+        fontsize=16, fontweight="bold", y=1.01,
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F17_tail_ecdf", output_dir)
+
+
+# ===================================================================
+# F18: Quantile Improvement Heatmap
+# ===================================================================
+
+def plot_f18_quantile_heatmap(sched_df, output_dir="results/figures"):
+    """F18: Heatmap showing % p99 reduction (SIT-DPP vs random) by target x device.
+
+    sched_df: DataFrame with columns including scheduler, target, device, p99.
+    """
+    if sched_df is None or len(sched_df) == 0:
+        print("Warning [F18]: sched_df is empty; skipping.")
+        return
+
+    required = {"scheduler", "target", "device", "p99"}
+    if not required.issubset(set(sched_df.columns)):
+        print(f"Warning [F18]: missing columns {required - set(sched_df.columns)}; skipping.")
+        return
+
+    df = sched_df.copy()
+
+    # Compute mean p99 per (target, device, scheduler)
+    sit_agg = df[df["scheduler"] == "sit_dpp"].groupby(["target", "device"])["p99"].mean()
+    rand_agg = df[df["scheduler"] == "random"].groupby(["target", "device"])["p99"].mean()
+
+    if len(sit_agg) == 0 or len(rand_agg) == 0:
+        print("Warning [F18]: need both sit_dpp and random data; skipping.")
+        return
+
+    # Compute % reduction
+    common_idx = sit_agg.index.intersection(rand_agg.index)
+    reduction = ((rand_agg.loc[common_idx] - sit_agg.loc[common_idx])
+                 / rand_agg.loc[common_idx] * 100)
+    reduction_df = reduction.reset_index()
+    reduction_df.columns = ["target", "device", "reduction_pct"]
+
+    pivot = reduction_df.pivot(index="target", columns="device", values="reduction_pct")
+
+    if pivot.empty:
+        print("Warning [F18]: pivot table is empty; skipping.")
+        return
+
+    data = pivot.values.astype(float)
+    n_rows, n_cols = data.shape
+
+    fig_width = max(8, 1.8 * n_cols + 2)
+    fig_height = max(5, 1.2 * n_rows + 2)
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    # Diverging colormap: green for improvement, red for degradation
+    vabs = max(abs(np.nanmin(data)), abs(np.nanmax(data)), 1)
+    norm = TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
+    cmap = plt.cm.RdYlGn  # red=bad, green=good
+
+    im = ax.imshow(data, aspect="auto", cmap=cmap, norm=norm)
+
+    ax.set_xticks(range(n_cols))
+    ax.set_xticklabels(pivot.columns.tolist(), rotation=45, ha="right", fontsize=10)
+    ax.set_yticks(range(n_rows))
+    ax.set_yticklabels(pivot.index.tolist(), fontsize=10)
+
+    # Annotate each cell
+    for i in range(n_rows):
+        for j in range(n_cols):
+            val = data[i, j]
+            if np.isnan(val):
+                continue
+            text_color = "white" if abs(val) > vabs * 0.6 else COLORS["DARK_TEXT"]
+            ax.text(j, i, f"{val:.1f}%", ha="center", va="center",
+                    fontsize=9, fontweight="bold", color=text_color)
+
+    cbar = plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
+    cbar.set_label("p99 Reduction vs Random (%)", fontsize=11)
+    cbar.ax.tick_params(labelsize=10)
+
+    ax.set_xlabel("Device", fontsize=12)
+    ax.set_ylabel("Target Workload", fontsize=12)
+    ax.set_title(
+        "F18: p99 Reduction by Target x Device",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F18_quantile_heatmap", output_dir)
+
+
+# ===================================================================
+# F19: CI Coverage Reliability Diagram
+# ===================================================================
+
+def plot_f19_ci_coverage(coverage_df, output_dir="results/figures"):
+    """F19: Bootstrap CI calibration -- nominal vs empirical coverage.
+
+    coverage_df columns: confidence_level, method, nominal_coverage, empirical_coverage
+    """
+    if coverage_df is None or len(coverage_df) == 0:
+        print("Warning [F19]: coverage_df is empty; skipping.")
+        return
+
+    df = coverage_df.copy()
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    # Perfect calibration line (diagonal)
+    ax.plot([0, 1], [0, 1], "--", color=COLORS["DARK_TEXT"], linewidth=1.5,
+            alpha=0.5, label="Perfect Calibration", zorder=2)
+
+    # Shade the overconfident / underconfident regions
+    ax.fill_between([0, 1], [0, 1], [0, 0], color=COLORS["LIGHT_RED"],
+                    alpha=0.08, label="Overconfident")
+    ax.fill_between([0, 1], [0, 1], [1, 1], color=COLORS["LIGHT_GREEN"],
+                    alpha=0.08, label="Conservative")
+
+    method_styles = {
+        "standard_bootstrap": ("-", "o", COLORS["BASELINE_BLUE"]),
+        "block_bootstrap": ("--", "s", COLORS["SIT_GREEN"]),
+    }
+
+    methods = df["method"].unique().tolist()
+    for method in methods:
+        mdata = df[df["method"] == method].sort_values("nominal_coverage")
+        xs = mdata["nominal_coverage"].values.astype(float)
+        ys = mdata["empirical_coverage"].values.astype(float)
+
+        ls, marker, color = method_styles.get(method, ("-", "D", COLORS["WARN_ORANGE"]))
+        nice_name = method.replace("_", " ").title()
+
+        ax.plot(xs, ys, linestyle=ls, marker=marker, color=color,
+                linewidth=2.5, markersize=8, label=nice_name, zorder=3)
+
+    ax.set_xlabel("Nominal Coverage", fontsize=12)
+    ax.set_ylabel("Empirical Coverage", fontsize=12)
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.02, 1.02)
+    ax.set_aspect("equal", adjustable="box")
+    ax.legend(fontsize=10, frameon=True, loc="lower right")
+    ax.set_title(
+        "F19: Bootstrap CI Calibration -- Nominal vs Empirical Coverage",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F19_ci_coverage", output_dir)
+
+
+# ===================================================================
+# F20: Overhead Breakdown
+# ===================================================================
+
+def plot_f20_overhead(overhead_data, output_dir="results/figures"):
+    """F20: SIT pipeline overhead breakdown.
+
+    overhead_data: dict with keys: measurement_time, reconstruction_time,
+        scheduling_time, total_time, n_conditions, per_decision_ms
+    """
+    if overhead_data is None or not isinstance(overhead_data, dict):
+        print("Warning [F20]: overhead_data is missing or not a dict; skipping.")
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    components = ["measurement_time", "reconstruction_time", "scheduling_time"]
+    component_labels = ["Measurement\n(Probing)", "Reconstruction\n(Tomography)", "Scheduling\n(Optimization)"]
+    component_colors = [COLORS["BASELINE_BLUE"], COLORS["ACCENT_PURPLE"], COLORS["SIT_GREEN"]]
+
+    vals = []
+    labels_used = []
+    colors_used = []
+    for comp, lbl, col in zip(components, component_labels, component_colors):
+        if comp in overhead_data:
+            vals.append(float(overhead_data[comp]))
+            labels_used.append(lbl)
+            colors_used.append(col)
+
+    if not vals:
+        # Fall back to whatever keys are present
+        for key, val in overhead_data.items():
+            if key not in ("total_time", "n_conditions", "per_decision_ms") and isinstance(val, (int, float)):
+                vals.append(float(val))
+                labels_used.append(key.replace("_", " ").title())
+                colors_used.append(COLORS["NEUTRAL_GRAY"])
+
+    if not vals:
+        print("Warning [F20]: no numeric overhead components found; skipping.")
+        plt.close(fig)
+        return
+
+    y_pos = np.arange(len(vals))
+    ax.barh(y_pos, vals, color=colors_used, alpha=0.85, edgecolor="white", height=0.55)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels_used, fontsize=11)
+    ax.set_xlabel("Time (seconds)", fontsize=12)
+
+    # Annotate bar values
+    for i, v in enumerate(vals):
+        ax.text(v + max(vals) * 0.02, i, f"{v:.2f}s", va="center", fontsize=10,
+                color=COLORS["DARK_TEXT"])
+
+    # Per-decision latency annotation
+    per_decision = overhead_data.get("per_decision_ms", None)
+    total_time = overhead_data.get("total_time", sum(vals))
+    n_cond = overhead_data.get("n_conditions", None)
+
+    annotation_parts = []
+    if total_time is not None:
+        annotation_parts.append(f"Total pipeline time: {float(total_time):.1f}s")
+    if n_cond is not None:
+        annotation_parts.append(f"Conditions: {int(n_cond):,}")
+    if per_decision is not None:
+        annotation_parts.append(f"Per-decision latency: {float(per_decision):.2f} ms")
+
+    if annotation_parts:
+        ax.text(
+            0.97, 0.05,
+            "\n".join(annotation_parts),
+            transform=ax.transAxes, ha="right", va="bottom",
+            fontsize=10, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.4", facecolor=COLORS["LIGHT_GREEN"],
+                      edgecolor=COLORS["SIT_GREEN"], alpha=0.85),
+        )
+
+    ax.set_title(
+        "F20: SIT Pipeline Overhead Breakdown",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F20_overhead_breakdown", output_dir)
+
+
+# ===================================================================
+# F21: Ablation Forest Plot
+# ===================================================================
+
+def plot_f21_ablation_forest(effect_size_df, output_dir="results/figures"):
+    """F21: Ablation forest plot -- component contribution with effect sizes.
+
+    effect_size_df columns: baseline, metric, cohens_d, ci_lo_diff, ci_hi_diff, improvement
+    """
+    if effect_size_df is None or len(effect_size_df) == 0:
+        print("Warning [F21]: effect_size_df is empty; skipping.")
+        return
+
+    df = effect_size_df.copy()
+    fig, ax = plt.subplots(figsize=(10, max(5, 0.5 * len(df) + 2)))
+
+    n = len(df)
+    y_pos = np.arange(n)
+
+    # Use p99 diff as point estimate, with CI
+    if "p99_diff_mean" in df.columns:
+        point_est = df["p99_diff_mean"].values.astype(float)
+    elif "improvement" in df.columns:
+        point_est = df["improvement"].values.astype(float)
+    else:
+        point_est = df["cohens_d_p99"].values.astype(float) if "cohens_d_p99" in df.columns \
+            else df.iloc[:, 1].values.astype(float)
+
+    if "p99_ci_lo" in df.columns:
+        ci_lo = df["p99_ci_lo"].values.astype(float)
+        ci_hi = df["p99_ci_hi"].values.astype(float)
+    elif "ci_lo_diff" in df.columns:
+        ci_lo = df["ci_lo_diff"].values.astype(float)
+        ci_hi = df["ci_hi_diff"].values.astype(float)
+    else:
+        ci_lo = point_est - abs(point_est) * 0.2
+        ci_hi = point_est + abs(point_est) * 0.2
+
+    # Color by direction: green if improvement > 0, red if <= 0
+    colors = [COLORS["SIT_GREEN"] if v > 0 else COLORS["RANDOM_RED"] for v in point_est]
+
+    # Build labels
+    if "baseline" in df.columns and "metric" in df.columns:
+        labels = [f"{row['baseline']} ({row['metric']})" for _, row in df.iterrows()]
+    elif "baseline" in df.columns:
+        labels = df["baseline"].tolist()
+    else:
+        labels = [f"Variant {i}" for i in range(n)]
+    labels = [str(lbl).replace("_", " ").title() for lbl in labels]
+
+    # Horizontal error bars (forest plot style)
+    for i in range(n):
+        ax.plot(
+            [ci_lo[i], ci_hi[i]], [y_pos[i], y_pos[i]],
+            "-", color=colors[i], linewidth=2.0, zorder=2,
+        )
+        ax.plot(
+            point_est[i], y_pos[i], "D",
+            color=colors[i], markersize=8, zorder=3,
+            markeredgecolor="white", markeredgewidth=0.8,
+        )
+
+    # Vertical line at 0 (no effect)
+    ax.axvline(0, color=COLORS["DARK_TEXT"], linewidth=1.2, linestyle="--",
+               alpha=0.6, zorder=1)
+
+    # Shade negative region (degradation)
+    xlim_lo = min(np.min(ci_lo), np.min(point_est)) - abs(np.max(point_est)) * 0.1
+    xlim_hi = max(np.max(ci_hi), np.max(point_est)) + abs(np.max(point_est)) * 0.1
+    ax.axvspan(xlim_lo, 0, alpha=0.04, color=COLORS["RANDOM_RED"], zorder=0)
+    ax.axvspan(0, xlim_hi, alpha=0.04, color=COLORS["SIT_GREEN"], zorder=0)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=10)
+    ax.set_xlabel("Improvement in p99 ($\\mu$s)  [right is better]", fontsize=12)
+    ax.invert_yaxis()
+
+    # Cohen's d annotation on the right
+    if "cohens_d" in df.columns:
+        for i in range(n):
+            d_val = float(df["cohens_d"].iloc[i])
+            ax.text(xlim_hi * 0.98, y_pos[i], f"d={d_val:.2f}",
+                    fontsize=8, color=COLORS["NEUTRAL_GRAY"], va="center", ha="right")
+
+    ax.set_title(
+        "F21: Ablation Forest Plot -- Component Contribution",
+        fontsize=16, fontweight="bold",
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F21_ablation_forest", output_dir)
+
+
+# ===================================================================
+# F22: Tomography Identifiability Diagnostics
+# ===================================================================
+
+def plot_f22_tomography_diagnostics(tomo_diagnostics, output_dir="results/figures"):
+    """F22: Tomography identifiability diagnostics.
+
+    tomo_diagnostics: dict with keys from identifiability_report:
+        condition_number, mutual_coherence, rank, singular_values (array),
+        reconstruction_comparison (DataFrame with columns: method, mse, sparsity)
+    """
+    if tomo_diagnostics is None or not isinstance(tomo_diagnostics, dict):
+        print("Warning [F22]: tomo_diagnostics is missing or not a dict; skipping.")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # ---- Panel A: Singular value spectrum ----
+    ax = axes[0]
+    svs = tomo_diagnostics.get("singular_values", None)
+    if svs is not None:
+        svs = np.asarray(svs, dtype=float)
+        n_sv = len(svs)
+        x = np.arange(n_sv)
+
+        # Color by magnitude (darker = larger)
+        norm_sv = svs / (svs.max() + 1e-12)
+        bar_colors = [plt.cm.viridis(0.2 + 0.7 * v) for v in norm_sv]
+
+        ax.bar(x, svs, color=bar_colors, alpha=0.85, edgecolor="white", width=0.7)
+        ax.set_xlabel("Singular Value Index", fontsize=11)
+        ax.set_ylabel("Singular Value", fontsize=11)
+        ax.set_title("A. Singular Value Spectrum", fontsize=13, fontweight="bold")
+
+        # Annotate condition number and rank
+        cond_num = tomo_diagnostics.get("condition_number", None)
+        rank = tomo_diagnostics.get("rank", None)
+        coherence = tomo_diagnostics.get("mutual_coherence", None)
+        info_parts = []
+        if cond_num is not None:
+            info_parts.append(f"Condition #: {float(cond_num):.1f}")
+        if rank is not None:
+            info_parts.append(f"Rank: {int(rank)}")
+        if coherence is not None:
+            info_parts.append(f"Mutual coherence: {float(coherence):.3f}")
+
+        if info_parts:
+            ax.text(
+                0.97, 0.95, "\n".join(info_parts),
+                transform=ax.transAxes, ha="right", va="top",
+                fontsize=9, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
+                          edgecolor=COLORS["GRID_GRAY"], alpha=0.9),
+            )
+
+        # Mark effective rank threshold (1% of max)
+        thresh = svs.max() * 0.01
+        ax.axhline(thresh, color=COLORS["WARN_ORANGE"], linestyle=":",
+                   linewidth=1.2, alpha=0.7)
+        ax.text(n_sv - 1, thresh * 1.1, "1% threshold", fontsize=8,
+                color=COLORS["WARN_ORANGE"], ha="right")
+    else:
+        ax.text(0.5, 0.5, "No singular values available",
+                transform=ax.transAxes, ha="center", fontsize=11)
+        ax.set_title("A. Singular Value Spectrum", fontsize=13, fontweight="bold")
+
+    # ---- Panel B: Reconstruction comparison ----
+    ax = axes[1]
+    recon_df = tomo_diagnostics.get("reconstruction_comparison", None)
+    if recon_df is not None and isinstance(recon_df, pd.DataFrame) and len(recon_df) > 0:
+        methods = recon_df["method"].tolist() if "method" in recon_df.columns else [f"M{i}" for i in range(len(recon_df))]
+        n_methods = len(methods)
+        x = np.arange(n_methods)
+        width = 0.35
+
+        method_colors = {
+            "OLS": COLORS["BASELINE_BLUE"],
+            "L1": COLORS["WARN_ORANGE"],
+            "Nonneg-L1": COLORS["SIT_GREEN"],
+        }
+
+        # MSE bars
+        if "mse" in recon_df.columns:
+            mse_vals = recon_df["mse"].values.astype(float)
+            mse_colors = [method_colors.get(m, COLORS["NEUTRAL_GRAY"]) for m in methods]
+            ax.bar(x - width / 2, mse_vals, width, color=mse_colors, alpha=0.85,
+                   edgecolor="white", label="MSE")
+
+            for i, v in enumerate(mse_vals):
+                ax.text(x[i] - width / 2, v + max(mse_vals) * 0.02,
+                        f"{v:.3f}", ha="center", va="bottom", fontsize=8)
+
+        # Sparsity bars (on twin axis)
+        if "sparsity" in recon_df.columns:
+            ax2 = ax.twinx()
+            sparsity_vals = recon_df["sparsity"].values.astype(float)
+            sp_colors = [method_colors.get(m, COLORS["NEUTRAL_GRAY"]) for m in methods]
+            ax2.bar(x + width / 2, sparsity_vals, width, color=sp_colors, alpha=0.45,
+                    edgecolor=sp_colors, linewidth=0.8, hatch="//", label="Sparsity")
+            ax2.set_ylabel("Sparsity (fraction of zeros)", fontsize=11)
+
+            for i, v in enumerate(sparsity_vals):
+                ax2.text(x[i] + width / 2, v + max(sparsity_vals) * 0.02,
+                         f"{v:.2f}", ha="center", va="bottom", fontsize=8)
+
+            # Combined legend
+            lines1, labels1 = ax.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax.legend(lines1 + lines2, labels1 + labels2, fontsize=9,
+                      frameon=True, loc="upper right")
+        else:
+            ax.legend(fontsize=9, frameon=True)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(methods, fontsize=10)
+        ax.set_ylabel("MSE", fontsize=11)
+        ax.set_title("B. Reconstruction Comparison", fontsize=13, fontweight="bold")
+    else:
+        ax.text(0.5, 0.5, "No reconstruction comparison data",
+                transform=ax.transAxes, ha="center", fontsize=11)
+        ax.set_title("B. Reconstruction Comparison", fontsize=13, fontweight="bold")
+
+    fig.suptitle(
+        "F22: Tomography Identifiability Diagnostics",
+        fontsize=16, fontweight="bold", y=1.01,
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F22_tomography_diagnostics", output_dir)
+
+
+# ===================================================================
 # Master generator
 # ===================================================================
 
@@ -1612,5 +2483,111 @@ def generate_all_figures(results: Dict, output_dir: str = "results/figures"):
             print(f"  F12 FAILED: {e}")
     else:
         print("  F12 skipped (no anchoring_summary).")
+
+    # F13
+    if "pareto_summary" in results:
+        try:
+            plot_f13_pareto_frontier(results["pareto_summary"], output_dir)
+            print("  F13 done.")
+        except Exception as e:
+            print(f"  F13 FAILED: {e}")
+    else:
+        print("  F13 skipped (no pareto_summary).")
+
+    # F14
+    if "probe_summary_df" in results:
+        try:
+            plot_f14_probe_budget(results["probe_summary_df"], output_dir)
+            print("  F14 done.")
+        except Exception as e:
+            print(f"  F14 FAILED: {e}")
+    else:
+        print("  F14 skipped (no probe_summary_df).")
+
+    # F15
+    if "drift_summary_df" in results:
+        try:
+            plot_f15_drift_robustness(results["drift_summary_df"], output_dir)
+            print("  F15 done.")
+        except Exception as e:
+            print(f"  F15 FAILED: {e}")
+    else:
+        print("  F15 skipped (no drift_summary_df).")
+
+    # F16
+    if "calibration_summary" in results:
+        try:
+            plot_f16_calibration(results["calibration_summary"], output_dir)
+            print("  F16 done.")
+        except Exception as e:
+            print(f"  F16 FAILED: {e}")
+    elif "anchoring_summary" in results:
+        try:
+            plot_f16_calibration(results["anchoring_summary"], output_dir)
+            print("  F16 done.")
+        except Exception as e:
+            print(f"  F16 FAILED: {e}")
+    else:
+        print("  F16 skipped (no calibration_summary / anchoring_summary).")
+
+    # F17
+    if "sched_results" in results:
+        try:
+            plot_f17_tail_ecdf(results["sched_results"], output_dir)
+            print("  F17 done.")
+        except Exception as e:
+            print(f"  F17 FAILED: {e}")
+    else:
+        print("  F17 skipped (no sched_results).")
+
+    # F18
+    if "sched_results" in results:
+        try:
+            plot_f18_quantile_heatmap(results["sched_results"], output_dir)
+            print("  F18 done.")
+        except Exception as e:
+            print(f"  F18 FAILED: {e}")
+    else:
+        print("  F18 skipped (no sched_results).")
+
+    # F19
+    if "coverage_df" in results:
+        try:
+            plot_f19_ci_coverage(results["coverage_df"], output_dir)
+            print("  F19 done.")
+        except Exception as e:
+            print(f"  F19 FAILED: {e}")
+    else:
+        print("  F19 skipped (no coverage_df).")
+
+    # F20
+    if "overhead_data" in results:
+        try:
+            plot_f20_overhead(results["overhead_data"], output_dir)
+            print("  F20 done.")
+        except Exception as e:
+            print(f"  F20 FAILED: {e}")
+    else:
+        print("  F20 skipped (no overhead_data).")
+
+    # F21
+    if "effect_size_df" in results:
+        try:
+            plot_f21_ablation_forest(results["effect_size_df"], output_dir)
+            print("  F21 done.")
+        except Exception as e:
+            print(f"  F21 FAILED: {e}")
+    else:
+        print("  F21 skipped (no effect_size_df).")
+
+    # F22
+    if "tomo_diagnostics" in results:
+        try:
+            plot_f22_tomography_diagnostics(results["tomo_diagnostics"], output_dir)
+            print("  F22 done.")
+        except Exception as e:
+            print(f"  F22 FAILED: {e}")
+    else:
+        print("  F22 skipped (no tomo_diagnostics).")
 
     print("Figure generation complete.")

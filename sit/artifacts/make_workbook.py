@@ -1144,6 +1144,16 @@ def _build_figure_manifest(wb: openpyxl.Workbook, config: Dict, all_results: Dic
         ("F10", "Channel Decomposition", "F10_channel_decomposition"),
         ("F11", "Sensitivity Analysis", "F11_sensitivity"),
         ("F12", "Real-System Anchoring Experiment", "F12_anchoring_experiment"),
+        ("F13", "Pareto Frontier: Tail Safety vs Utilization", "F13_pareto_frontier"),
+        ("F14", "Probe Budget Curve", "F14_probe_budget"),
+        ("F15", "Drift Robustness", "F15_drift_robustness"),
+        ("F16", "Simulator Calibration", "F16_calibration"),
+        ("F17", "Tail ECDF", "F17_tail_ecdf"),
+        ("F18", "Quantile Improvement Heatmap", "F18_quantile_heatmap"),
+        ("F19", "CI Coverage Reliability Diagram", "F19_ci_coverage"),
+        ("F20", "Overhead Breakdown", "F20_overhead"),
+        ("F21", "Ablation Forest Plot", "F21_ablation_forest"),
+        ("F22", "Tomography Diagnostics", "F22_tomography_diagnostics"),
     ]
 
     for fig_id, desc, basename in manifest:
@@ -1159,8 +1169,150 @@ def _build_figure_manifest(wb: openpyxl.Workbook, config: Dict, all_results: Dic
     _auto_column_widths(ws)
 
 
+def _build_pareto(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """Sheet: Pareto Frontier."""
+    ws = wb.create_sheet("Pareto_Frontier")
+    row = _write_title(ws, 1, 1, "Pareto Frontier: Tail Safety vs Utilization")
+    row += 1
+
+    pareto = all_results.get("pareto_summary")
+    if pareto is None or len(pareto) == 0:
+        ws.cell(row=row, column=1, value="No Pareto data available").font = _VALUE_FONT
+        _auto_column_widths(ws)
+        return
+
+    headers = ["Scheduler", "Mean p99", "Mean CVaR99", "Utilization", "Throughput", "Pareto-Optimal"]
+    for ci, h in enumerate(headers, 1):
+        ws.cell(row=row, column=ci, value=h)
+    _style_header_row(ws, row, len(headers))
+    data_start = row + 1
+    row += 1
+
+    for _, r in pareto.iterrows():
+        ws.cell(row=row, column=1, value=str(r.get("scheduler", ""))).font = _VALUE_FONT
+        ws.cell(row=row, column=2, value=round(_safe_float(r.get("mean_p99")), 0)).font = _VALUE_FONT
+        ws.cell(row=row, column=3, value=round(_safe_float(r.get("mean_cvar99")), 0)).font = _VALUE_FONT
+        ws.cell(row=row, column=4, value=round(_safe_float(r.get("mean_utilization")), 3)).font = _VALUE_FONT
+        ws.cell(row=row, column=5, value=round(_safe_float(r.get("mean_throughput")), 4)).font = _VALUE_FONT
+        ws.cell(row=row, column=6, value="Yes" if r.get("is_pareto_optimal", False) else "No").font = _VALUE_FONT
+        row += 1
+    data_end = row - 1
+
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "Pareto Frontier: p99 vs Utilization"
+    chart.y_axis.title = "Mean p99 Latency"
+    chart.width = 18
+    chart.height = 12
+    cats = Reference(ws, min_col=1, min_row=data_start, max_row=data_end)
+    p99_vals = Reference(ws, min_col=2, min_row=data_start - 1, max_row=data_end)
+    chart.add_data(p99_vals, titles_from_data=True)
+    chart.set_categories(cats)
+    for i, s in enumerate(chart.series):
+        s.graphicalProperties.solidFill = _CHART_COLORS[i % len(_CHART_COLORS)]
+    row += 1
+    ws.add_chart(chart, f"A{row}")
+    _auto_column_widths(ws)
+
+
+def _build_drift_robustness(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """Sheet: Drift Robustness."""
+    ws = wb.create_sheet("Drift_Robustness")
+    row = _write_title(ws, 1, 1, "Drift Robustness Sweep")
+    row += 1
+
+    drift_summary = all_results.get("drift_summary_df")
+    if drift_summary is None or len(drift_summary) == 0:
+        ws.cell(row=row, column=1, value="No drift data available").font = _VALUE_FONT
+        _auto_column_widths(ws)
+        return
+
+    headers = ["Drift Type", "Magnitude", "|Naive Bias|", "|IRBS Bias|", "Bias Reduction %"]
+    for ci, h in enumerate(headers, 1):
+        ws.cell(row=row, column=ci, value=h)
+    _style_header_row(ws, row, len(headers))
+    data_start = row + 1
+    row += 1
+
+    for _, r in drift_summary.iterrows():
+        ws.cell(row=row, column=1, value=str(r.get("drift_type", ""))).font = _VALUE_FONT
+        ws.cell(row=row, column=2, value=round(_safe_float(r.get("magnitude")), 2)).font = _VALUE_FONT
+        ws.cell(row=row, column=3, value=round(abs(_safe_float(r.get("mean_naive_bias"))), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=4, value=round(abs(_safe_float(r.get("mean_irbs_bias"))), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=5, value=round(_safe_float(r.get("bias_reduction_pct")), 1)).font = _VALUE_FONT
+        row += 1
+
+    _auto_column_widths(ws)
+
+
+def _build_effect_sizes(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """Sheet: Effect Sizes."""
+    ws = wb.create_sheet("Effect_Sizes")
+    row = _write_title(ws, 1, 1, "Statistical Effect Sizes (vs SIT-DPP)")
+    row += 1
+
+    effect_df = all_results.get("effect_size_df")
+    if effect_df is None or len(effect_df) == 0:
+        ws.cell(row=row, column=1, value="No effect size data available").font = _VALUE_FONT
+        _auto_column_widths(ws)
+        return
+
+    headers = ["Baseline", "Cohen's d (p99)", "Cliff's delta (p99)", "Magnitude", "CI lo (p99)", "CI hi (p99)"]
+    for ci, h in enumerate(headers, 1):
+        ws.cell(row=row, column=ci, value=h)
+    _style_header_row(ws, row, len(headers))
+    row += 1
+
+    for _, r in effect_df.iterrows():
+        ws.cell(row=row, column=1, value=str(r.get("baseline", ""))).font = _VALUE_FONT
+        ws.cell(row=row, column=2, value=round(_safe_float(r.get("cohens_d_p99")), 3)).font = _VALUE_FONT
+        ws.cell(row=row, column=3, value=round(_safe_float(r.get("cliffs_delta_p99")), 3)).font = _VALUE_FONT
+        ws.cell(row=row, column=4, value=str(r.get("cliffs_magnitude_p99", ""))).font = _VALUE_FONT
+        ws.cell(row=row, column=5, value=round(_safe_float(r.get("ci_lo_p99")), 1)).font = _VALUE_FONT
+        ws.cell(row=row, column=6, value=round(_safe_float(r.get("ci_hi_p99")), 1)).font = _VALUE_FONT
+        row += 1
+
+    _auto_column_widths(ws)
+
+
+def _build_tomo_diagnostics(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """Sheet: Tomography Diagnostics."""
+    ws = wb.create_sheet("Tomo_Diagnostics")
+    row = _write_title(ws, 1, 1, "Tomography Identifiability Diagnostics")
+    row += 1
+
+    diag = all_results.get("tomo_diagnostics", {})
+    if not diag:
+        ws.cell(row=row, column=1, value="No diagnostics available").font = _VALUE_FONT
+        _auto_column_widths(ws)
+        return
+
+    row = _write_label_value(ws, row, "Condition Number", round(_safe_float(diag.get("condition_number")), 1))
+    row = _write_label_value(ws, row, "Rank", diag.get("rank", "N/A"))
+    row = _write_label_value(ws, row, "Mutual Coherence", round(_safe_float(diag.get("mutual_coherence")), 3))
+    row = _write_label_value(ws, row, "Well-Posed", str(diag.get("is_well_posed", "N/A")))
+    row += 1
+
+    recon = diag.get("reconstruction_comparison")
+    if recon is not None and len(recon) > 0:
+        headers = ["Method", "MSE", "Sparsity", "Residual Norm"]
+        for ci, h in enumerate(headers, 1):
+            ws.cell(row=row, column=ci, value=h)
+        _style_header_row(ws, row, len(headers))
+        row += 1
+        for _, r in recon.iterrows():
+            ws.cell(row=row, column=1, value=str(r.get("method", ""))).font = _VALUE_FONT
+            ws.cell(row=row, column=2, value=round(_safe_float(r.get("mse")), 6)).font = _VALUE_FONT
+            ws.cell(row=row, column=3, value=round(_safe_float(r.get("sparsity_ratio")), 3)).font = _VALUE_FONT
+            ws.cell(row=row, column=4, value=round(_safe_float(r.get("residual_norm")), 6)).font = _VALUE_FONT
+            row += 1
+
+    _auto_column_widths(ws)
+
+
 def _build_how_to_recompute(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
-    """Sheet 14: How_to_Recompute."""
+    """How_to_Recompute."""
     ws = wb.create_sheet("How_to_Recompute")
     row = _write_title(ws, 1, 1, "How to Recompute These Results")
     row += 2
@@ -1222,6 +1374,10 @@ def create_workbook(config: Dict, all_results: Dict) -> str:
     _build_sensitivity(wb, config, all_results)
     _build_cross_validation(wb, config, all_results)
     _build_anchoring(wb, config, all_results)
+    _build_pareto(wb, config, all_results)
+    _build_drift_robustness(wb, config, all_results)
+    _build_effect_sizes(wb, config, all_results)
+    _build_tomo_diagnostics(wb, config, all_results)
     _build_figure_manifest(wb, config, all_results)
     _build_how_to_recompute(wb, config, all_results)
 

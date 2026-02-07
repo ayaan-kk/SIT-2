@@ -17,7 +17,7 @@
     "input_data": [
       "data/derived/drift_bias_demo.csv"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -38,7 +38,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -61,7 +61,7 @@
       "data/derived/tomography_ci_lower.csv",
       "data/derived/tomography_ci_upper.csv"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -82,7 +82,7 @@
     "input_data": [
       "data/derived/recovery_curve.csv"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -103,7 +103,7 @@
     "input_data": [
       "data/derived/mismatch_scatter.csv"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -124,7 +124,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -145,7 +145,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -166,7 +166,7 @@
     "input_data": [
       "data/derived/ablations.csv"
     ],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   },
   {
@@ -185,7 +185,278 @@
       1729
     ],
     "input_data": [],
-    "git_commit": "48b88b0a89206335d31bb6b8a939186055872e68",
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F10",
+    "title": "Channel Decomposition Analysis",
+    "description": "Stacked bar chart of interference channel contributions (LLC, MEM_BW, TLB, PREFETCH, NUMA, THERMAL, OS_FAULTS).",
+    "output_path": "results/figures/F10_channel_decomposition.png",
+    "output_path_pdf": "results/figures/F10_channel_decomposition.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All spectators, reference device, mid distance/load",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/channel_decomposition.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F11",
+    "title": "Sensitivity Analysis",
+    "description": "Multi-panel plot showing p99 reduction sensitivity to load, distance, and other experimental parameters.",
+    "output_path": "results/figures/F11_sensitivity_analysis.png",
+    "output_path_pdf": "results/figures/F11_sensitivity_analysis.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All parameter combinations, structured+adversarial regimes",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/sensitivity_analysis.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F12",
+    "title": "Real-System Anchoring",
+    "description": "Comparison of SIT vs random scheduling on anchoring scenarios modeled after Triton (ResNet-50), Redis (GET), and gRPC.",
+    "output_path": "results/figures/F12_anchoring_experiment.png",
+    "output_path_pdf": "results/figures/F12_anchoring_experiment.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "3 anchoring scenarios with published parameters",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/anchoring_summary.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F13",
+    "title": "Pareto Frontier: Tail Safety vs Utilization",
+    "description": "Scatter plot of schedulers on the (utilization, p99) plane with the Pareto frontier highlighted.",
+    "output_path": "results/figures/F13_pareto_frontier.png",
+    "output_path_pdf": "results/figures/F13_pareto_frontier.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All schedulers, aggregated across conditions",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/pareto_summary.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F14",
+    "title": "Probe Budget Curve",
+    "description": "Line plot of ranking quality (NDCG@k, Kendall tau) vs number of probes for random, round-robin, UCB, and DPP strategies.",
+    "output_path": "results/figures/F14_probe_budget.png",
+    "output_path_pdf": "results/figures/F14_probe_budget.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "Probe counts 2-20, 4 selection strategies",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/probe_budget_summary.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F15",
+    "title": "Drift Robustness Sweep",
+    "description": "Two-panel plot: (left) p99 reduction vs drift magnitude for 6 drift types, (right) per-type bars at reference magnitude.",
+    "output_path": "results/figures/F15_drift_robustness.png",
+    "output_path_pdf": "results/figures/F15_drift_robustness.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "6 drift types, magnitudes 0-2x",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/drift_summary.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F16",
+    "title": "Simulator Calibration vs Published Data",
+    "description": "Bar chart comparing published vs simulator p99 latencies for Triton, Redis, and gRPC anchoring scenarios.",
+    "output_path": "results/figures/F16_calibration.png",
+    "output_path_pdf": "results/figures/F16_calibration.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "3 anchoring scenarios",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/anchoring_summary.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F17",
+    "title": "Tail Latency ECDF",
+    "description": "Complementary CDF (1-F(x)) of p99 latencies for each scheduler on a log-x scale, showing tail behavior.",
+    "output_path": "results/figures/F17_tail_ecdf.png",
+    "output_path_pdf": "results/figures/F17_tail_ecdf.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All scheduling results, all schedulers",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F18",
+    "title": "Per-Condition p99 Improvement Heatmap",
+    "description": "Heatmap of p99 reduction (SIT-DPP vs random) for each target x device combination.",
+    "output_path": "results/figures/F18_quantile_heatmap.png",
+    "output_path_pdf": "results/figures/F18_quantile_heatmap.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All target-device pairs, SIT-DPP vs random",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F19",
+    "title": "Bootstrap CI Coverage Reliability Diagram",
+    "description": "Reliability diagram showing observed CI coverage vs nominal level for block bootstrap confidence intervals.",
+    "output_path": "results/figures/F19_ci_coverage.png",
+    "output_path_pdf": "results/figures/F19_ci_coverage.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "100 outer simulation repeats, nominal levels 80-99%",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/ci_coverage.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F20",
+    "title": "Pipeline Overhead Breakdown",
+    "description": "Horizontal bar chart of per-phase execution time showing that overhead is a small fraction of total runtime.",
+    "output_path": "results/figures/F20_overhead_breakdown.png",
+    "output_path_pdf": "results/figures/F20_overhead_breakdown.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All pipeline phases",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F21",
+    "title": "Ablation Forest Plot with Effect Sizes",
+    "description": "Forest plot showing p99 difference (SIT-DPP vs each baseline) with bootstrap confidence intervals and Cohen's d.",
+    "output_path": "results/figures/F21_ablation_forest.png",
+    "output_path_pdf": "results/figures/F21_ablation_forest.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All baselines vs SIT-DPP",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/effect_sizes.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "data_available": true
+  },
+  {
+    "figure_id": "F22",
+    "title": "Tomography Identifiability Diagnostics",
+    "description": "Two-panel: (left) SVD spectrum of measurement matrix, (right) OLS vs L1 vs non-negative L1 reconstruction comparison.",
+    "output_path": "results/figures/F22_tomography_diagnostics.png",
+    "output_path_pdf": "results/figures/F22_tomography_diagnostics.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "Tomography matrix from Phase 2",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/reconstruction_comparison.csv"
+    ],
+    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
     "data_available": true
   }
 ]
