@@ -2341,6 +2341,213 @@ def plot_f22_tomography_diagnostics(tomo_diagnostics, output_dir="results/figure
 
 
 # ===================================================================
+# F23: SLO-Satisfying Throughput vs Tail Risk (Partition Killer)
+# ===================================================================
+
+def plot_f23_slo_throughput(
+    slo_throughput_df: "pd.DataFrame",
+    output_dir: str = "results/figures",
+):
+    """F23: SLO-satisfying throughput vs tail risk for each scheduler.
+
+    Shows that static partition loses throughput significantly while
+    SIT achieves near-partition tail safety at higher throughput.
+    """
+    import pandas as pd
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    scheduler_colors = {
+        "sit_dpp": COLORS["SIT_GREEN"],
+        "sit_ucb_dpp": COLORS.get("UCB_BLUE", "#2196F3"),
+        "random": COLORS["RANDOM_RED"],
+        "static_partition": COLORS.get("PARTITION_ORANGE", "#FF9800"),
+        "mean_greedy": COLORS.get("GREEDY_PURPLE", "#9C27B0"),
+        "similarity_avoidance": COLORS.get("SIM_CYAN", "#00BCD4"),
+        "linux_proxy": COLORS["NEUTRAL_GRAY"],
+    }
+
+    sched_order = ["static_partition", "sit_dpp", "sit_ucb_dpp",
+                    "mean_greedy", "similarity_avoidance", "random", "linux_proxy"]
+
+    # Panel A: Admission rate across SLO thresholds
+    ax = axes[0]
+    for sched in sched_order:
+        sdf = slo_throughput_df[slo_throughput_df["scheduler"] == sched]
+        if len(sdf) == 0:
+            continue
+        color = scheduler_colors.get(sched, COLORS["NEUTRAL_GRAY"])
+        label = sched.replace("_", " ").title()
+        ax.plot(sdf["slo_threshold_us"] / 1e3, sdf["admission_rate"] * 100,
+                marker="o", markersize=5, color=color, label=label, linewidth=2)
+
+    ax.set_xlabel("SLO Threshold (ms)", fontsize=12)
+    ax.set_ylabel("SLO Admission Rate (%)", fontsize=12)
+    ax.set_title("A. SLO Admission Rate vs Threshold", fontsize=13, fontweight="bold")
+    ax.set_xscale("log")
+    ax.legend(fontsize=8, loc="lower right", frameon=True)
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(-5, 105)
+
+    # Panel B: Admitted throughput vs admitted tail risk at one mid SLO
+    ax = axes[1]
+    # Use the middle SLO threshold
+    thresholds = sorted(slo_throughput_df["slo_threshold_us"].unique())
+    mid_slo = thresholds[len(thresholds) // 2] if thresholds else 500_000
+
+    mid_df = slo_throughput_df[slo_throughput_df["slo_threshold_us"] == mid_slo]
+    for _, row in mid_df.iterrows():
+        sched = row["scheduler"]
+        color = scheduler_colors.get(sched, COLORS["NEUTRAL_GRAY"])
+        label = sched.replace("_", " ").title()
+        tp = row.get("admitted_throughput", 0)
+        p99 = row.get("admitted_mean_p99", 0)
+        rate = row.get("admission_rate", 0)
+        if tp > 0 and p99 > 0:
+            ax.scatter(tp, p99 / 1e3, s=max(50, rate * 200), color=color,
+                       label=f"{label} ({rate*100:.0f}% adm.)",
+                       edgecolors="black", linewidth=0.5, zorder=5)
+
+    ax.set_xlabel("Admitted Throughput (norm. req/s)", fontsize=12)
+    ax.set_ylabel("Mean p99 Among Admitted (ms)", fontsize=12)
+    ax.set_title(f"B. Throughput vs Tail Risk (SLO={mid_slo/1e3:.0f}ms)",
+                 fontsize=13, fontweight="bold")
+    ax.legend(fontsize=7, loc="upper right", frameon=True)
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(
+        "F23: SLO-Satisfying Throughput vs Tail Risk",
+        fontsize=16, fontweight="bold", y=1.01,
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F23_slo_throughput", output_dir)
+
+
+# ===================================================================
+# F24: Regime-Based Win/Loss Map
+# ===================================================================
+
+def plot_f24_regime_winloss(
+    sched_df: "pd.DataFrame",
+    output_dir: str = "results/figures",
+):
+    """F24: Heatmap of SIT improvement by (distance, load, regime).
+
+    Includes both wins and losses, explicitly showing the failure
+    region where SIT does not improve over the best baseline.
+    """
+    import pandas as pd
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Compute delta CVaR99 for SIT vs best non-SIT baseline
+    sit_data = sched_df[sched_df["scheduler"] == "sit_dpp"].copy()
+    non_sit = sched_df[~sched_df["scheduler"].str.startswith("sit_")].copy()
+
+    if len(sit_data) == 0 or len(non_sit) == 0:
+        for ax in axes:
+            ax.text(0.5, 0.5, "Insufficient data", transform=ax.transAxes,
+                    ha="center", fontsize=14)
+        _save_fig(fig, "F24_regime_winloss", output_dir)
+        return
+
+    # Group keys for merging
+    merge_cols = []
+    for c in ["distance", "load", "regime", "target", "device_id"]:
+        if c in sit_data.columns and c in non_sit.columns:
+            merge_cols.append(c)
+
+    if not merge_cols:
+        for ax in axes:
+            ax.text(0.5, 0.5, "No grouping columns", transform=ax.transAxes,
+                    ha="center", fontsize=14)
+        _save_fig(fig, "F24_regime_winloss", output_dir)
+        return
+
+    # Best non-SIT baseline per condition
+    best_baseline = non_sit.groupby(merge_cols).agg(
+        best_p99=("p99", "min"),
+        best_cvar99=("cvar99", "min"),
+    ).reset_index()
+
+    sit_agg = sit_data.groupby(merge_cols).agg(
+        sit_p99=("p99", "mean"),
+        sit_cvar99=("cvar99", "mean"),
+    ).reset_index()
+
+    merged = pd.merge(sit_agg, best_baseline, on=merge_cols, how="inner")
+    if len(merged) == 0:
+        for ax in axes:
+            ax.text(0.5, 0.5, "No merged data", transform=ax.transAxes,
+                    ha="center", fontsize=14)
+        _save_fig(fig, "F24_regime_winloss", output_dir)
+        return
+
+    merged["delta_p99_pct"] = (1 - merged["sit_p99"] / merged["best_p99"]) * 100
+    merged["delta_cvar99_pct"] = (1 - merged["sit_cvar99"] / merged["best_cvar99"]) * 100
+
+    # Panel A: Distance x Load heatmap of p99 improvement
+    ax = axes[0]
+    if "distance" in merged.columns and "load" in merged.columns:
+        pivot = merged.groupby(["distance", "load"])["delta_p99_pct"].mean().unstack()
+        if pivot.shape[0] > 0 and pivot.shape[1] > 0:
+            vmax = max(abs(pivot.values.min()), abs(pivot.values.max()), 10)
+            im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto",
+                          vmin=-vmax, vmax=vmax)
+            ax.set_xticks(range(len(pivot.columns)))
+            ax.set_xticklabels([f"{x:.1f}" for x in pivot.columns], fontsize=9)
+            ax.set_yticks(range(len(pivot.index)))
+            ax.set_yticklabels(pivot.index, fontsize=9)
+            ax.set_xlabel("Load", fontsize=11)
+            ax.set_ylabel("Distance", fontsize=11)
+            plt.colorbar(im, ax=ax, label="p99 Improvement (%)")
+
+            # Annotate cells
+            for i in range(pivot.shape[0]):
+                for j in range(pivot.shape[1]):
+                    val = pivot.values[i, j]
+                    color = "white" if abs(val) > vmax * 0.6 else "black"
+                    ax.text(j, i, f"{val:.0f}%", ha="center", va="center",
+                           fontsize=8, color=color, fontweight="bold")
+    ax.set_title("A. SIT p99 vs Best Baseline (%)", fontsize=13, fontweight="bold")
+
+    # Panel B: Regime x Load heatmap of CVaR99 improvement
+    ax = axes[1]
+    if "regime" in merged.columns and "load" in merged.columns:
+        pivot = merged.groupby(["regime", "load"])["delta_cvar99_pct"].mean().unstack()
+        if pivot.shape[0] > 0 and pivot.shape[1] > 0:
+            vmax = max(abs(pivot.values.min()), abs(pivot.values.max()), 10)
+            im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto",
+                          vmin=-vmax, vmax=vmax)
+            ax.set_xticks(range(len(pivot.columns)))
+            ax.set_xticklabels([f"{x:.1f}" for x in pivot.columns], fontsize=9)
+            ax.set_yticks(range(len(pivot.index)))
+            ax.set_yticklabels(pivot.index, fontsize=9)
+            ax.set_xlabel("Load", fontsize=11)
+            ax.set_ylabel("Regime", fontsize=11)
+            plt.colorbar(im, ax=ax, label="CVaR99 Improvement (%)")
+
+            for i in range(pivot.shape[0]):
+                for j in range(pivot.shape[1]):
+                    val = pivot.values[i, j]
+                    color = "white" if abs(val) > vmax * 0.6 else "black"
+                    ax.text(j, i, f"{val:.0f}%", ha="center", va="center",
+                           fontsize=8, color=color, fontweight="bold")
+    ax.set_title("B. SIT CVaR99 vs Best Baseline (%)", fontsize=13, fontweight="bold")
+
+    fig.suptitle(
+        "F24: Win/Loss Map — SIT vs Best Baseline by Condition",
+        fontsize=16, fontweight="bold", y=1.01,
+    )
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F24_regime_winloss", output_dir)
+
+
+# ===================================================================
 # Master generator
 # ===================================================================
 
@@ -2589,5 +2796,25 @@ def generate_all_figures(results: Dict, output_dir: str = "results/figures"):
             print(f"  F22 FAILED: {e}")
     else:
         print("  F22 skipped (no tomo_diagnostics).")
+
+    # F23
+    if "slo_throughput_df" in results:
+        try:
+            plot_f23_slo_throughput(results["slo_throughput_df"], output_dir)
+            print("  F23 done.")
+        except Exception as e:
+            print(f"  F23 FAILED: {e}")
+    else:
+        print("  F23 skipped (no slo_throughput_df).")
+
+    # F24
+    if "sched_results" in results:
+        try:
+            plot_f24_regime_winloss(results["sched_results"], output_dir)
+            print("  F24 done.")
+        except Exception as e:
+            print(f"  F24 FAILED: {e}")
+    else:
+        print("  F24 skipped (no sched_results).")
 
     print("Figure generation complete.")

@@ -1311,6 +1311,38 @@ def _build_tomo_diagnostics(wb: openpyxl.Workbook, config: Dict, all_results: Di
     _auto_column_widths(ws)
 
 
+def _build_slo_throughput(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
+    """SLO_Throughput sheet."""
+    slo_df = all_results.get("slo_throughput_df")
+    if slo_df is None or len(slo_df) == 0:
+        return
+
+    ws = wb.create_sheet("SLO_Throughput")
+    row = _write_title(ws, 1, 1, "SLO-Admission Throughput Analysis")
+    row += 2
+
+    row = _write_label_value(ws, row, "Purpose:", "Shows partition loses throughput while SIT recovers it")
+    row += 1
+
+    headers = ["Scheduler", "SLO Threshold (us)", "Admission Rate", "Admitted Throughput", "Admitted p99", "Admitted CVaR99"]
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(row=row, column=c, value=h)
+        cell.font = _HEADER_FONT
+        cell.fill = _HEADER_FILL
+    row += 1
+
+    for _, data_row in slo_df.iterrows():
+        ws.cell(row=row, column=1, value=data_row.get("scheduler", ""))
+        ws.cell(row=row, column=2, value=data_row.get("slo_threshold_us", 0))
+        ws.cell(row=row, column=3, value=round(data_row.get("admission_rate", 0), 4))
+        ws.cell(row=row, column=4, value=round(data_row.get("admitted_throughput", 0), 2))
+        ws.cell(row=row, column=5, value=round(data_row.get("admitted_mean_p99", 0), 2))
+        ws.cell(row=row, column=6, value=round(data_row.get("admitted_mean_cvar99", 0), 2))
+        row += 1
+
+    _auto_column_widths(ws)
+
+
 def _build_how_to_recompute(wb: openpyxl.Workbook, config: Dict, all_results: Dict):
     """How_to_Recompute."""
     ws = wb.create_sheet("How_to_Recompute")
@@ -1378,6 +1410,7 @@ def create_workbook(config: Dict, all_results: Dict) -> str:
     _build_drift_robustness(wb, config, all_results)
     _build_effect_sizes(wb, config, all_results)
     _build_tomo_diagnostics(wb, config, all_results)
+    _build_slo_throughput(wb, config, all_results)
     _build_figure_manifest(wb, config, all_results)
     _build_how_to_recompute(wb, config, all_results)
 

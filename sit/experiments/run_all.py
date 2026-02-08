@@ -1099,6 +1099,7 @@ def phase8i_utilization_and_stats(config: Dict, all_results: Dict) -> Dict:
     from sit.analysis.utilization import (
         compute_utilization, compute_throughput,
         compute_pareto_summary, compute_efficiency_metrics,
+        compute_slo_admission, compute_slo_throughput_summary,
     )
 
     n_slots = config.get("scheduling", {}).get("n_slots", 3)
@@ -1115,6 +1116,21 @@ def phase8i_utilization_and_stats(config: Dict, all_results: Dict) -> Dict:
 
     all_results["pareto_summary"] = pareto_summary
     all_results["efficiency_metrics"] = efficiency
+
+    # --- SLO-admission throughput ---
+    sched_df = compute_slo_admission(sched_df)
+    all_results["sched_results"] = sched_df
+
+    slo_throughput_df = compute_slo_throughput_summary(sched_df)
+    slo_throughput_df.to_csv(f"{derived_dir}/slo_throughput.csv", index=False)
+    all_results["slo_throughput_df"] = slo_throughput_df
+
+    print("  SLO-admission throughput:")
+    mid_slo = 500_000
+    mid = slo_throughput_df[slo_throughput_df["slo_threshold_us"] == mid_slo]
+    for _, row in mid.iterrows():
+        print(f"    {row['scheduler']}: adm_rate={row['admission_rate']:.1%}, "
+              f"throughput={row['admitted_throughput']:.0f}")
 
     print("  Pareto frontier:")
     for _, row in pareto_summary.iterrows():

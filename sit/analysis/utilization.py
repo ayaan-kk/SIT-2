@@ -282,3 +282,90 @@ def compute_efficiency_metrics(sched_df: pd.DataFrame) -> pd.DataFrame:
             "tail_risk_per_throughput",
         ]
     ]
+
+
+# ---------------------------------------------------------------------------
+# SLO-admission rate and SLO-constrained throughput
+# ---------------------------------------------------------------------------
+
+def compute_slo_admission(
+    sched_df: pd.DataFrame,
+    slo_threshold_us: float = 500_000.0,
+    metric: str = "p99",
+) -> pd.DataFrame:
+    """Add ``slo_admitted`` column: 1 if the condition meets SLO, 0 otherwise.
+
+    A condition "meets the SLO" when its tail latency (p99 by default)
+    is below *slo_threshold_us*.  This is the admission-control analogue:
+    "would you run this configuration in production?"
+
+    Parameters
+    ----------
+    sched_df : pd.DataFrame
+        Must contain *metric* column and ``scheduler``.
+    slo_threshold_us : float
+        SLO threshold in microseconds.
+    metric : str
+        Column to compare against the SLO (default ``"p99"``).
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy with ``slo_admitted`` (bool) column added.
+    """
+    df = sched_df.copy()
+    df["slo_admitted"] = df[metric] <= slo_threshold_us
+    return df
+
+
+def compute_slo_throughput_summary(
+    sched_df: pd.DataFrame,
+    slo_thresholds_us: Optional[List[float]] = None,
+    metric: str = "p99",
+) -> pd.DataFrame:
+    """Per-scheduler summary of SLO-satisfying throughput at several thresholds.
+
+    For each SLO threshold, computes:
+    - admission_rate: fraction of conditions meeting the SLO
+    - admitted_throughput: mean throughput among admitted conditions
+    - tail_risk (mean p99): mean p99 among admitted conditions
+
+    Static partition pays a *real cost*: because it reduces effective
+    concurrency, its throughput among admitted conditions is lower.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: scheduler, slo_threshold_us, admission_rate,
+        admitted_throughput, admitted_mean_p99, admitted_mean_cvar99.
+    """
+    if slo_thresholds_us is None:
+        slo_thresholds_us = [100_000, 250_000, 500_000, 1_000_000, 2_500_000]
+
+    rows = []
+    for slo in slo_thresholds_us:
+        for sched, grp in sched_df.groupby("scheduler"):
+            admitted = grp[grp[metric] <= slo]
+            n_total = len(grp)
+            n_admitted = len(admitted)
+            rate = n_admitted / n_total if n_total > 0 else 0.0
+
+            if n_admitted > 0:
+                mean_tp = float(admitted["throughput"].mean()) if "throughput" in admitted.columns else 0.0
+                mean_p99 = float(admitted[metric].mean())
+                mean_cvar = float(admitted["cvar99"].mean()) if "cvar99" in admitted.columns else 0.0
+            else:
+                mean_tp = 0.0
+                mean_p99 = 0.0
+                mean_cvar = 0.0
+
+            rows.append({
+                "scheduler": sched,
+                "slo_threshold_us": slo,
+                "admission_rate": rate,
+                "admitted_throughput": mean_tp,
+                "admitted_mean_p99": mean_p99,
+                "admitted_mean_cvar99": mean_cvar,
+            })
+
+    return pd.DataFrame(rows)

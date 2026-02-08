@@ -17,7 +17,7 @@
     "input_data": [
       "data/derived/drift_bias_demo.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -38,7 +38,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -61,7 +61,7 @@
       "data/derived/tomography_ci_lower.csv",
       "data/derived/tomography_ci_upper.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -82,7 +82,7 @@
     "input_data": [
       "data/derived/recovery_curve.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -103,7 +103,7 @@
     "input_data": [
       "data/derived/mismatch_scatter.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -124,7 +124,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -145,7 +145,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -166,7 +166,7 @@
     "input_data": [
       "data/derived/ablations.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -185,7 +185,7 @@
       1729
     ],
     "input_data": [],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -206,8 +206,8 @@
     "input_data": [
       "data/derived/channel_decomposition.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
-    "data_available": true
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "data_available": false
   },
   {
     "figure_id": "F11",
@@ -227,7 +227,7 @@
     "input_data": [
       "data/derived/sensitivity_analysis.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -248,7 +248,7 @@
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -269,7 +269,7 @@
     "input_data": [
       "data/derived/pareto_summary.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -290,7 +290,7 @@
     "input_data": [
       "data/derived/probe_budget_summary.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -311,7 +311,7 @@
     "input_data": [
       "data/derived/drift_summary.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -332,7 +332,7 @@
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -353,7 +353,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -374,7 +374,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -395,8 +395,8 @@
     "input_data": [
       "data/derived/ci_coverage.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
-    "data_available": true
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "data_available": false
   },
   {
     "figure_id": "F20",
@@ -414,7 +414,7 @@
       1729
     ],
     "input_data": [],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -435,7 +435,7 @@
     "input_data": [
       "data/derived/effect_sizes.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   },
   {
@@ -456,7 +456,49 @@
     "input_data": [
       "data/derived/reconstruction_comparison.csv"
     ],
-    "git_commit": "f897ba5e49d3e4303fa2c3044d0cae641a2e38b3",
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "data_available": true
+  },
+  {
+    "figure_id": "F23",
+    "title": "SLO-Satisfying Throughput vs Tail Risk",
+    "description": "Two-panel: (left) SLO admission rate across thresholds, (right) admitted throughput vs tail risk. Shows partition loses throughput while SIT recovers it with similar tail safety.",
+    "output_path": "results/figures/F23_slo_throughput.png",
+    "output_path_pdf": "results/figures/F23_slo_throughput.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All schedulers, multiple SLO thresholds",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/derived/slo_throughput.csv"
+    ],
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "data_available": true
+  },
+  {
+    "figure_id": "F24",
+    "title": "Regime Win/Loss Map",
+    "description": "Heatmaps of SIT improvement vs best baseline by (distance, load) and (regime, load), showing both wins and losses.",
+    "output_path": "results/figures/F24_regime_winloss.png",
+    "output_path_pdf": "results/figures/F24_regime_winloss.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All conditions, SIT-DPP vs best non-SIT baseline",
+    "seed_list": [
+      42,
+      137,
+      314,
+      1729
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
     "data_available": true
   }
 ]

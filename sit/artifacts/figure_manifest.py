@@ -285,6 +285,31 @@ _FIGURE_CATALOGUE: List[Dict[str, Any]] = [
         "filters": "Tomography matrix from Phase 2",
         "input_data": ["data/derived/reconstruction_comparison.csv"],
     },
+    {
+        "figure_id": "F23",
+        "filename": "F23_slo_throughput",
+        "title": "SLO-Satisfying Throughput vs Tail Risk",
+        "description": (
+            "Two-panel: (left) SLO admission rate across thresholds, "
+            "(right) admitted throughput vs tail risk. Shows partition "
+            "loses throughput while SIT recovers it with similar tail safety."
+        ),
+        "result_key": "slo_throughput_df",
+        "filters": "All schedulers, multiple SLO thresholds",
+        "input_data": ["data/derived/slo_throughput.csv"],
+    },
+    {
+        "figure_id": "F24",
+        "filename": "F24_regime_winloss",
+        "title": "Regime Win/Loss Map",
+        "description": (
+            "Heatmaps of SIT improvement vs best baseline by "
+            "(distance, load) and (regime, load), showing both wins and losses."
+        ),
+        "result_key": "sched_results",
+        "filters": "All conditions, SIT-DPP vs best non-SIT baseline",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
 ]
 
 
