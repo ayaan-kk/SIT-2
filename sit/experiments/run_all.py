@@ -522,7 +522,10 @@ def phase5_baseline_mismatch(config: Dict, all_results: Dict) -> Dict:
     print("PHASE 5: Baseline Mismatch Analysis")
     print("=" * 70)
 
-    from sit.analysis.baseline_mismatch import NaivePredictor, compute_mismatch_metrics
+    from sit.analysis.baseline_mismatch import (
+        NaivePredictor, RegressionBaseline, compute_mismatch_metrics,
+        compute_bias_variance_decomposition,
+    )
 
     tomo_mean = all_results["tomo_mean"]
     ctrl_p99_values = all_results.get("ctrl_p99_values", {})
@@ -542,8 +545,13 @@ def phase5_baseline_mismatch(config: Dict, all_results: Dict) -> Dict:
             observed = float(tomo_mean.loc[t_name, s_name])
             p99_ctrl = ctrl_p99_values.get(t_name, targets_dict[t_name].base_latency_us * 3.0)
 
+            sim_val = compute_cosine_similarity(targets_dict[t_name], spectators_dict[s_name])
+
             for load in config["loads"]:
                 for dist in config["distances"]:
+                    from sit.simulator.interference_channels import DISTANCE_ATTENUATION
+                    h_rho = DISTANCE_ATTENUATION.get(dist, 0.5)
+
                     predicted_p99 = predictor.predict(
                         p99_ctrl, targets_dict[t_name], spectators_dict[s_name], load, dist
                     )
@@ -556,6 +564,8 @@ def phase5_baseline_mismatch(config: Dict, all_results: Dict) -> Dict:
                         "distance": dist,
                         "observed": observed,
                         "predicted": predicted_delta,
+                        "sim": sim_val,
+                        "h_rho": h_rho,
                     })
 
     scatter_df = pd.DataFrame(scatter_rows)
@@ -567,6 +577,53 @@ def phase5_baseline_mismatch(config: Dict, all_results: Dict) -> Dict:
         )
     else:
         mismatch_metrics = {}
+
+    # ---- Regression baseline (calibrated) ----
+    regression_metrics = {}
+    if len(scatter_df) > 10:
+        reg = RegressionBaseline(q=1.2)
+        X_feats = np.column_stack([
+            scatter_df["sim"].values,
+            scatter_df["load"].values ** 1.2 * scatter_df["h_rho"].values,
+            scatter_df["sim"].values * scatter_df["load"].values ** 1.2 * scatter_df["h_rho"].values,
+        ])
+        y_obs = scatter_df["observed"].values
+
+        # Leave-one-out style: fit on 80%, predict on 20%
+        n = len(scatter_df)
+        rng = np.random.default_rng(42)
+        idx = rng.permutation(n)
+        split = int(0.8 * n)
+        train_idx, test_idx = idx[:split], idx[split:]
+
+        reg.fit(X_feats[train_idx], y_obs[train_idx])
+        reg_pred = np.array([
+            reg.predict_delta(
+                scatter_df.iloc[i]["sim"],
+                scatter_df.iloc[i]["load"],
+                scatter_df.iloc[i]["h_rho"],
+            ) for i in test_idx
+        ])
+        reg_obs = y_obs[test_idx]
+        scatter_df.loc[scatter_df.index[test_idx], "predicted_regression"] = reg_pred
+
+        regression_metrics = compute_bias_variance_decomposition(reg_obs, reg_pred)
+        naive_bv = compute_bias_variance_decomposition(
+            scatter_df["observed"].values,
+            scatter_df["predicted"].values,
+        )
+
+        print(f"  --- Naive predictor ---")
+        print(f"    Bias: {naive_bv['bias']:.1f},  RMSE: {naive_bv['rmse']:.1f}")
+        print(f"    Underprediction rate: {naive_bv['underprediction_rate']:.1%}")
+        print(f"    Overprediction rate: {naive_bv['overprediction_rate']:.1%}")
+        print(f"  --- Regression baseline (test set) ---")
+        print(f"    Bias: {regression_metrics['bias']:.1f},  RMSE: {regression_metrics['rmse']:.1f}")
+        print(f"    Underprediction rate: {regression_metrics['underprediction_rate']:.1%}")
+        print(f"    Overprediction rate: {regression_metrics['overprediction_rate']:.1%}")
+
+        all_results["naive_bias_variance"] = naive_bv
+        all_results["regression_bias_variance"] = regression_metrics
 
     scatter_df.to_csv(f"{config['output']['derived_dir']}/mismatch_scatter.csv", index=False)
     print(f"Mismatch analysis: {len(scatter_df)} points")
@@ -1100,17 +1157,28 @@ def phase8i_utilization_and_stats(config: Dict, all_results: Dict) -> Dict:
         compute_utilization, compute_throughput,
         compute_pareto_summary, compute_efficiency_metrics,
         compute_slo_admission, compute_slo_throughput_summary,
+        compute_goodput, compute_goodput_summary,
     )
+
+    derived_dir = config["output"]["derived_dir"]
 
     n_slots = config.get("scheduling", {}).get("n_slots", 3)
     sched_df = compute_utilization(sched_df, n_slots)
     sched_df = compute_throughput(sched_df)
+    sched_df = compute_goodput(sched_df)
     all_results["sched_results"] = sched_df
 
     pareto_summary = compute_pareto_summary(sched_df)
     efficiency = compute_efficiency_metrics(sched_df)
+    goodput_summary = compute_goodput_summary(sched_df)
+    goodput_summary.to_csv(f"{derived_dir}/goodput_summary.csv", index=False)
+    all_results["goodput_summary"] = goodput_summary
 
-    derived_dir = config["output"]["derived_dir"]
+    print("  Goodput (partition-killer metric):")
+    for _, row in goodput_summary.iterrows():
+        gp = row.get("goodput", 0)
+        print(f"    {row['scheduler']}: goodput={gp:.0f}, p99={row['p99']:.0f}, cvar99={row['cvar99']:.0f}")
+
     pareto_summary.to_csv(f"{derived_dir}/pareto_summary.csv", index=False)
     efficiency.to_csv(f"{derived_dir}/efficiency_metrics.csv", index=False)
 

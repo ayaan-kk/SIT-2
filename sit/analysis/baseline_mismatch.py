@@ -96,6 +96,69 @@ def compute_mismatch_metrics(
     return metrics
 
 
+class RegressionBaseline:
+    """Linear-regression interference predictor (calibrated baseline).
+
+    Fits  predicted_delta = a * sim + b * load^q * h(rho) + c * sim * load^q * h(rho) + intercept
+
+    Unlike NaivePredictor which always underpredicts (by construction),
+    this baseline can both over- and under-predict because the coefficients
+    are fit from the training portion of the tomography data.
+    """
+
+    def __init__(self, q: float = 1.2):
+        self.q = q
+        self._coefs: np.ndarray | None = None
+        self._intercept: float = 0.0
+        self._fitted = False
+
+    def _featurize(self, sim: float, load: float, h_rho: float) -> np.ndarray:
+        lq = load ** self.q
+        return np.array([sim, lq * h_rho, sim * lq * h_rho])
+
+    def fit(self, X_features: np.ndarray, y: np.ndarray) -> "RegressionBaseline":
+        """Fit from design matrix [n, 3] and response y [n]."""
+        ones = np.ones((X_features.shape[0], 1))
+        A = np.hstack([X_features, ones])
+        coef, _, _, _ = np.linalg.lstsq(A, y, rcond=None)
+        self._coefs = coef[:3]
+        self._intercept = coef[3]
+        self._fitted = True
+        return self
+
+    def predict_delta(self, sim: float, load: float, h_rho: float) -> float:
+        if not self._fitted:
+            raise RuntimeError("RegressionBaseline not fitted yet.")
+        feats = self._featurize(sim, load, h_rho)
+        return float(np.dot(self._coefs, feats) + self._intercept)
+
+
+def compute_bias_variance_decomposition(
+    observed: np.ndarray,
+    predicted: np.ndarray,
+) -> Dict[str, float]:
+    """Decompose prediction error into bias, variance, and MSE.
+
+    Returns
+    -------
+    dict with keys: bias, variance, mse, bias_squared,
+                    overprediction_rate, underprediction_rate
+    """
+    errors = predicted - observed
+    bias = float(np.mean(errors))
+    variance = float(np.var(errors))
+    mse = float(np.mean(errors ** 2))
+    return {
+        "bias": bias,
+        "bias_squared": bias ** 2,
+        "variance": variance,
+        "mse": mse,
+        "rmse": float(np.sqrt(mse)),
+        "overprediction_rate": float(np.mean(predicted > observed)),
+        "underprediction_rate": float(np.mean(predicted < observed)),
+    }
+
+
 def run_baseline_mismatch(
     tomography_matrix: pd.DataFrame,
     ctrl_p99_matrix: pd.DataFrame,

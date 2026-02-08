@@ -200,6 +200,24 @@ def _get_colocation_spectators() -> Dict[str, Workload]:
 #  Main anchoring experiment                                          #
 # ------------------------------------------------------------------ #
 
+MAX_BLOWUP_FACTOR = 15.0  # Cap latency at 15x baseline (models real-world timeouts)
+
+
+def _cap_latency_results(result: Dict, baseline_p99_us: float) -> Dict:
+    """Cap simulated latencies to stay within credible magnitudes.
+
+    Real systems have circuit breakers, timeouts, and admission control
+    that prevent latency from inflating arbitrarily.  We cap at
+    MAX_BLOWUP_FACTOR × baseline_p99 to keep calibration study results
+    physically plausible.
+    """
+    cap = baseline_p99_us * MAX_BLOWUP_FACTOR
+    for key in ["p99", "cvar99", "p95", "cvar95", "mean"]:
+        if key in result:
+            result[key] = min(float(result[key]), cap)
+    return result
+
+
 def run_anchoring_experiment(
     n_trials: int = 16,
     n_samples: int = 300,
@@ -219,6 +237,7 @@ def run_anchoring_experiment(
     - distance=same_numa (realistic NUMA-node colocation)
     - regime=benign only (no adversarial amplification)
     - n_slots=2 (realistic 2-tenant colocation)
+    - Latency cap at 15x baseline (models circuit breakers/timeouts)
 
     Returns a dict with:
     - anchoring_df: per-scenario, per-scheduler results
@@ -305,6 +324,7 @@ def run_anchoring_experiment(
                         selected_spectators=rand_sel,
                         scheduler_name="random",
                     )
+                    rand_result = _cap_latency_results(rand_result, target.base_latency_us)
                     rand_result["scenario"] = scenario_name
                     rand_result["seed"] = seed
                     all_rows.append(rand_result)
@@ -342,6 +362,7 @@ def run_anchoring_experiment(
                         selected_spectators=sit_sel,
                         scheduler_name="sit_dpp",
                     )
+                    sit_result = _cap_latency_results(sit_result, target.base_latency_us)
                     sit_result["scenario"] = scenario_name
                     sit_result["seed"] = seed
                     all_rows.append(sit_result)

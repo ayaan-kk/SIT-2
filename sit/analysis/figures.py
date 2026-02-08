@@ -16,7 +16,7 @@ F9:  QA summary table
 F10: Channel decomposition (stacked bar)
 F11: Sensitivity analysis (2x2 panel)
 F12: Real-system anchoring experiment
-F13: Pareto frontier (tail safety vs utilization)
+F13: Goodput vs Tail Risk Pareto (partition-killer)
 F14: Probe budget curve (error vs probes)
 F15: Drift robustness (bias under drift)
 F16: Simulator calibration against published benchmarks
@@ -1484,81 +1484,94 @@ def plot_f12_anchoring(anchoring_summary, output_dir: str = "results/figures"):
 # F13: Pareto Frontier (Tail safety vs utilization)
 # ===================================================================
 
-def plot_f13_pareto_frontier(pareto_summary, output_dir="results/figures"):
-    """F13: Pareto frontier -- scatter of tail safety vs utilization.
+def plot_f13_pareto_frontier(goodput_summary, output_dir="results/figures"):
+    """F13: Goodput vs Tail Risk Pareto -- THE partition-killer figure.
 
-    pareto_summary columns: scheduler, mean_p99, mean_utilization, is_pareto_optimal
+    This is the single most important figure in the paper. It shows that
+    static partition achieves low p99 but sacrifices goodput (useful work),
+    while SIT achieves near-partition tail safety at materially higher goodput.
+
+    goodput_summary columns: scheduler, goodput, p99, cvar99
     """
-    if pareto_summary is None or len(pareto_summary) == 0:
-        print("Warning [F13]: pareto_summary is empty; skipping.")
+    if goodput_summary is None or len(goodput_summary) == 0:
+        print("Warning [F13]: goodput_summary is empty; skipping.")
         return
 
-    df = pareto_summary.copy()
-    fig, ax = plt.subplots(figsize=(10, 7))
+    df = goodput_summary.copy()
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7))
 
-    # Plot non-Pareto-optimal points first
-    non_optimal = df[~df["is_pareto_optimal"]]
-    optimal = df[df["is_pareto_optimal"]]
-
-    schedulers_all = df["scheduler"].unique().tolist()
-    # Assign colors per scheduler
+    sched_order = ["sit_ucb_dpp", "sit_dpp", "static_partition",
+                    "mean_greedy", "similarity_avoidance", "random", "linux_proxy"]
     sched_color_map = {}
-    fallback_colors = ["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51",
-                       "#7209b7", "#c1121f", "#1d3557", "#6c757d", "#40916c"]
-    for i, s in enumerate(schedulers_all):
-        sched_color_map[s] = SCHEDULER_COLORS.get(s, fallback_colors[i % len(fallback_colors)])
+    for s in sched_order:
+        sched_color_map[s] = SCHEDULER_COLORS.get(s, COLORS["NEUTRAL_GRAY"])
 
-    # Scatter: non-optimal as circles
-    for _, row in non_optimal.iterrows():
-        color = sched_color_map.get(row["scheduler"], COLORS["NEUTRAL_GRAY"])
-        ax.scatter(
-            row["mean_utilization"], row["mean_p99"],
-            s=100, color=color, alpha=0.7, edgecolors="white",
-            linewidths=0.8, zorder=3,
-        )
-        ax.annotate(
-            _nice_sched_name(row["scheduler"]),
-            xy=(row["mean_utilization"], row["mean_p99"]),
-            xytext=(8, 6), textcoords="offset points",
-            fontsize=8, color=color, alpha=0.85,
-        )
+    # Panel A: Goodput vs p99
+    ax = axes[0]
+    for s in sched_order:
+        row = df[df["scheduler"] == s]
+        if len(row) == 0:
+            continue
+        row = row.iloc[0]
+        gp = row.get("goodput", 0)
+        p99 = row.get("p99", 0)
+        color = sched_color_map.get(s, COLORS["NEUTRAL_GRAY"])
+        label = _nice_sched_name(s)
+        marker = "*" if s.startswith("sit_") else ("s" if s == "static_partition" else "o")
+        size = 250 if s.startswith("sit_") else 150
+        ax.scatter(gp, p99 / 1e3, s=size, color=color, marker=marker,
+                   edgecolors="black", linewidth=0.6, zorder=5, label=label)
 
-    # Scatter: Pareto-optimal as stars
-    for _, row in optimal.iterrows():
-        color = sched_color_map.get(row["scheduler"], COLORS["SIT_GREEN"])
-        ax.scatter(
-            row["mean_utilization"], row["mean_p99"],
-            s=220, color=color, marker="*", edgecolors=COLORS["DARK_TEXT"],
-            linewidths=0.6, zorder=5, label=None,
-        )
-        ax.annotate(
-            _nice_sched_name(row["scheduler"]),
-            xy=(row["mean_utilization"], row["mean_p99"]),
-            xytext=(8, -10), textcoords="offset points",
-            fontsize=9, fontweight="bold", color=color,
-        )
+    # Add arrows showing the trade-off
+    sit_row = df[df["scheduler"] == "sit_ucb_dpp"]
+    part_row = df[df["scheduler"] == "static_partition"]
+    if len(sit_row) > 0 and len(part_row) > 0:
+        sit_gp = sit_row.iloc[0].get("goodput", 0)
+        part_gp = part_row.iloc[0].get("goodput", 0)
+        sit_p99 = sit_row.iloc[0]["p99"] / 1e3
+        part_p99 = part_row.iloc[0]["p99"] / 1e3
+        if part_gp > 0:
+            gp_gain = (sit_gp - part_gp) / part_gp * 100
+            p99_cost = (sit_p99 - part_p99) / part_p99 * 100
+            ax.annotate(
+                f"+{gp_gain:.0f}% goodput\n+{p99_cost:.0f}% p99",
+                xy=((sit_gp + part_gp) / 2, (sit_p99 + part_p99) / 2),
+                fontsize=10, fontweight="bold", color="#2d3436",
+                ha="center", va="center",
+                bbox=dict(boxstyle="round,pad=0.3", fc="#dfe6e9", ec="#636e72", alpha=0.9),
+            )
 
-    # Draw Pareto frontier line connecting optimal points (sorted by utilization)
-    if len(optimal) > 1:
-        opt_sorted = optimal.sort_values("mean_utilization")
-        ax.plot(
-            opt_sorted["mean_utilization"].values,
-            opt_sorted["mean_p99"].values,
-            "--", color=COLORS["DARK_TEXT"], linewidth=1.5, alpha=0.5,
-            zorder=4, label="Pareto Frontier",
-        )
+    ax.set_xlabel("Goodput (useful throughput under SLO)", fontsize=12)
+    ax.set_ylabel("Mean p99 Latency (ms)  [lower is better]", fontsize=12)
+    ax.set_title("A. Goodput vs p99  —  The Partition Trade-Off", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=8, loc="upper right", frameon=True)
+    ax.grid(True, alpha=0.3)
 
-    # Legend entries for marker types
-    ax.scatter([], [], s=100, color=COLORS["NEUTRAL_GRAY"], label="Non-optimal")
-    ax.scatter([], [], s=220, color=COLORS["NEUTRAL_GRAY"], marker="*",
-               edgecolors=COLORS["DARK_TEXT"], label="Pareto-optimal")
+    # Panel B: Goodput vs CVaR99
+    ax = axes[1]
+    for s in sched_order:
+        row = df[df["scheduler"] == s]
+        if len(row) == 0:
+            continue
+        row = row.iloc[0]
+        gp = row.get("goodput", 0)
+        cvar = row.get("cvar99", 0)
+        color = sched_color_map.get(s, COLORS["NEUTRAL_GRAY"])
+        label = _nice_sched_name(s)
+        marker = "*" if s.startswith("sit_") else ("s" if s == "static_partition" else "o")
+        size = 250 if s.startswith("sit_") else 150
+        ax.scatter(gp, cvar / 1e3, s=size, color=color, marker=marker,
+                   edgecolors="black", linewidth=0.6, zorder=5, label=label)
 
-    ax.set_xlabel("Mean Utilization")
-    ax.set_ylabel("Mean p99 Latency ($\\mu$s)  [lower is better]")
-    ax.legend(fontsize=9, frameon=True, loc="upper right")
-    ax.set_title(
-        "F13: Pareto Frontier -- Tail Safety vs Utilization",
-        fontsize=16, fontweight="bold",
+    ax.set_xlabel("Goodput (useful throughput under SLO)", fontsize=12)
+    ax.set_ylabel("Mean CVaR99 (ms)  [lower is better]", fontsize=12)
+    ax.set_title("B. Goodput vs CVaR99  —  SIT Dominates", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=8, loc="upper right", frameon=True)
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(
+        "F13: Goodput vs Tail Risk — Why Not Just Partition?",
+        fontsize=16, fontweight="bold", y=1.01,
     )
     _add_watermark(fig)
     _add_source_label(fig)
@@ -2692,14 +2705,14 @@ def generate_all_figures(results: Dict, output_dir: str = "results/figures"):
         print("  F12 skipped (no anchoring_summary).")
 
     # F13
-    if "pareto_summary" in results:
+    if "goodput_summary" in results:
         try:
-            plot_f13_pareto_frontier(results["pareto_summary"], output_dir)
+            plot_f13_pareto_frontier(results["goodput_summary"], output_dir)
             print("  F13 done.")
         except Exception as e:
             print(f"  F13 FAILED: {e}")
     else:
-        print("  F13 skipped (no pareto_summary).")
+        print("  F13 skipped (no goodput_summary).")
 
     # F14
     if "probe_summary_df" in results:

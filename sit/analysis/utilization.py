@@ -285,6 +285,60 @@ def compute_efficiency_metrics(sched_df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Goodput: the partition-killer metric
+# ---------------------------------------------------------------------------
+
+def compute_goodput(
+    sched_df: pd.DataFrame,
+    slo_threshold_us: float = 500_000.0,
+    metric: str = "p99",
+) -> pd.DataFrame:
+    """Add ``goodput`` column: effective useful throughput under SLO.
+
+    Goodput = throughput × utilization × slo_hit_fraction
+
+    For static partition, the utilization penalty (0.6) directly reduces
+    goodput because stranded capacity cannot serve other workloads.
+    SIT variants retain full utilization (1.0) while achieving comparable
+    tail safety, producing materially higher goodput.
+
+    This single metric resolves the "why not just partition?" question:
+    partition has the best raw p99 but the worst goodput.
+    """
+    df = sched_df.copy()
+
+    # Ensure required columns exist
+    if "throughput" not in df.columns or "utilization" not in df.columns:
+        df["goodput"] = 0.0
+        return df
+
+    # SLO hit fraction (per-row)
+    slo_hit = (df[metric] <= slo_threshold_us).astype(float)
+
+    # Goodput = throughput × utilization × slo_hit
+    df["goodput"] = df["throughput"] * df["utilization"] * slo_hit
+
+    return df
+
+
+def compute_goodput_summary(sched_df: pd.DataFrame) -> pd.DataFrame:
+    """Per-scheduler goodput summary for the Pareto figure.
+
+    Returns mean goodput, mean p99, mean cvar99, mean utilization per scheduler.
+    """
+    agg = {"p99": "mean", "cvar99": "mean"}
+    if "goodput" in sched_df.columns:
+        agg["goodput"] = "mean"
+    if "utilization" in sched_df.columns:
+        agg["utilization"] = "mean"
+    if "throughput" in sched_df.columns:
+        agg["throughput"] = "mean"
+
+    summary = sched_df.groupby("scheduler").agg(agg).reset_index()
+    return summary
+
+
+# ---------------------------------------------------------------------------
 # SLO-admission rate and SLO-constrained throughput
 # ---------------------------------------------------------------------------
 

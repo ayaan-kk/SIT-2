@@ -10,14 +10,12 @@
     "filters": "Single target-spectator pair, structured regime, mid load/distance",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/drift_bias_demo.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -31,14 +29,12 @@
     "filters": "First target and spectator from config, all loads/distances/regimes",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -52,16 +48,14 @@
     "filters": "Reference device, mid distance, mid load, structured regime, aggregated over seeds",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/tomography_mean.csv",
       "data/derived/tomography_ci_lower.csv",
       "data/derived/tomography_ci_upper.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -75,14 +69,12 @@
     "filters": "First target, reference device, mid distance/load, structured regime",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/recovery_curve.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -96,14 +88,12 @@
     "filters": "All target-spectator pairs, all loads and distances",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/mismatch_scatter.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -117,14 +107,12 @@
     "filters": "All schedulers, grouped by regime",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -138,14 +126,12 @@
     "filters": "Top 10% conditions by random-scheduler p99, adversarial regime",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -159,14 +145,12 @@
     "filters": "All scheduling conditions, aggregated",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/ablations.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -180,12 +164,10 @@
     "filters": "All QA checks",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -199,14 +181,12 @@
     "filters": "All spectators, reference device, mid distance/load",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/channel_decomposition.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": false
   },
   {
@@ -220,14 +200,12 @@
     "filters": "All parameter combinations, structured+adversarial regimes",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/sensitivity_analysis.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -241,14 +219,12 @@
     "filters": "3 anchoring scenarios with published parameters",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -262,14 +238,12 @@
     "filters": "All schedulers, aggregated across conditions",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/pareto_summary.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -283,14 +257,12 @@
     "filters": "Probe counts 2-20, 4 selection strategies",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/probe_budget_summary.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -304,14 +276,12 @@
     "filters": "6 drift types, magnitudes 0-2x",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/drift_summary.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -325,14 +295,12 @@
     "filters": "3 anchoring scenarios",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -346,14 +314,12 @@
     "filters": "All scheduling results, all schedulers",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -367,14 +333,12 @@
     "filters": "All target-device pairs, SIT-DPP vs random",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -388,14 +352,12 @@
     "filters": "100 outer simulation repeats, nominal levels 80-99%",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/ci_coverage.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": false
   },
   {
@@ -409,12 +371,10 @@
     "filters": "All pipeline phases",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -428,14 +388,12 @@
     "filters": "All baselines vs SIT-DPP",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/effect_sizes.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -449,14 +407,12 @@
     "filters": "Tomography matrix from Phase 2",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/reconstruction_comparison.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -470,14 +426,12 @@
     "filters": "All schedulers, multiple SLO thresholds",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/derived/slo_throughput.csv"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   },
   {
@@ -491,14 +445,12 @@
     "filters": "All conditions, SIT-DPP vs best non-SIT baseline",
     "seed_list": [
       42,
-      137,
-      314,
-      1729
+      137
     ],
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "e263d7ca7c03157422e3ef6f522772052b0fde0c",
+    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
     "data_available": true
   }
 ]
