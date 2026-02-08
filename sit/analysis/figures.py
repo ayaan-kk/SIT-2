@@ -26,6 +26,11 @@ F19: CI coverage reliability diagram
 F20: Overhead breakdown (horizontal bar)
 F21: Ablation forest plot (component contribution)
 F22: Tomography identifiability diagnostics
+F23: SLO-satisfying throughput
+F24: Regime win/loss map
+F25: Predicted vs realized risk scatter (decision quality)
+F26: CVaR ECDF overlay (catastrophe decomposition)
+F27: Regime failure heatmap (delta CVaR vs best baseline)
 """
 
 import warnings
@@ -2561,6 +2566,239 @@ def plot_f24_regime_winloss(
 
 
 # ===================================================================
+# F25: Predicted vs Realized Risk Scatter
+# ===================================================================
+
+def plot_f25_predicted_vs_realized(sched_df, output_dir="results/figures"):
+    """F25: Decision-time predicted risk vs realized p99/CVaR99.
+
+    Reveals whether scheduling failures come from estimator error
+    (predicted low, realized high) or policy error (predicted high,
+    chosen anyway).
+    """
+    df = sched_df.copy()
+    if "predicted_risk" not in df.columns:
+        print("Warning [F25]: no predicted_risk column; skipping.")
+        return
+
+    sit_data = df[df["scheduler"].isin(["sit_dpp", "sit_ucb_dpp"])].dropna(subset=["predicted_risk"])
+    if len(sit_data) == 0:
+        print("Warning [F25]: no SIT decision data; skipping.")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7))
+
+    for ax, metric, label in [(axes[0], "p99", "p99 Latency (us)"),
+                               (axes[1], "cvar99", "CVaR99 (us)")]:
+        for sched in ["sit_dpp", "sit_ucb_dpp"]:
+            sub = sit_data[sit_data["scheduler"] == sched]
+            if len(sub) == 0:
+                continue
+            color = SCHEDULER_COLORS.get(sched, COLORS["NEUTRAL_GRAY"])
+            label_s = _nice_sched_name(sched)
+            ax.scatter(sub["predicted_risk"], sub[metric],
+                       s=15, alpha=0.4, color=color, label=label_s, edgecolors="none")
+
+        # Perfect prediction line
+        lims = [ax.get_xlim(), ax.get_ylim()]
+        lo = min(lims[0][0], lims[1][0])
+        hi = max(lims[0][1], lims[1][1])
+        ax.plot([lo, hi], [lo, hi], "--", color=COLORS["DARK_TEXT"],
+                linewidth=1, alpha=0.5, label="Perfect prediction")
+
+        # Highlight catastrophe zone (realized >> predicted)
+        ax.fill_between([lo, hi], [lo*10, hi*10], [hi*100, hi*100],
+                         alpha=0.05, color=COLORS["RANDOM_RED"], zorder=0)
+
+        ax.set_xlabel("Predicted Total Risk (us)", fontsize=11)
+        ax.set_ylabel(f"Realized {label}", fontsize=11)
+        ax.set_title(f"Predicted Risk vs Realized {metric.upper()}", fontsize=12)
+        ax.legend(fontsize=8, frameon=True)
+        ax.set_xscale("symlog", linthresh=1000)
+        ax.set_yscale("symlog", linthresh=1000)
+        ax.grid(True, alpha=0.3)
+
+    fig.suptitle("F25: Decision Quality — Predicted vs Realized Risk",
+                 fontsize=15, fontweight="bold", y=1.01)
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F25_predicted_vs_realized", output_dir)
+
+
+# ===================================================================
+# F26: CVaR ECDF Overlay (Catastrophe Decomposition)
+# ===================================================================
+
+def plot_f26_cvar_ecdf(sched_df, output_dir="results/figures"):
+    """F26: Complementary CDF of CVaR99 per scheduler.
+
+    Shows the full distribution of CVaR99 across conditions,
+    with emphasis on the extreme right tail (top 1%).
+    """
+    df = sched_df.copy()
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6.5))
+
+    sched_order = ["sit_dpp", "sit_ucb_dpp", "mean_greedy",
+                    "similarity_avoidance", "static_partition", "random"]
+
+    # Panel A: Full CCDF of CVaR99
+    ax = axes[0]
+    for sched in sched_order:
+        sub = df[df["scheduler"] == sched]
+        if len(sub) == 0:
+            continue
+        vals = np.sort(sub["cvar99"].values)
+        ccdf = 1.0 - np.arange(1, len(vals) + 1) / len(vals)
+        color = SCHEDULER_COLORS.get(sched, COLORS["NEUTRAL_GRAY"])
+        ax.plot(vals / 1e6, ccdf, linewidth=1.8, color=color,
+                label=_nice_sched_name(sched), alpha=0.8)
+
+    ax.set_xlabel("CVaR99 (millions of us)", fontsize=11)
+    ax.set_ylabel("P(CVaR99 > x)", fontsize=11)
+    ax.set_title("A. Complementary CDF of CVaR99", fontsize=12, fontweight="bold")
+    ax.set_xscale("symlog", linthresh=1)
+    ax.legend(fontsize=8, frameon=True, loc="upper right")
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(-0.02, 1.02)
+
+    # Panel B: Zoom on top 1% worst conditions
+    ax = axes[1]
+    for sched in sched_order:
+        sub = df[df["scheduler"] == sched]
+        if len(sub) == 0:
+            continue
+        vals = np.sort(sub["cvar99"].values)
+        n = len(vals)
+        top_pct = max(1, int(n * 0.01))
+        top_vals = vals[-top_pct:]
+        color = SCHEDULER_COLORS.get(sched, COLORS["NEUTRAL_GRAY"])
+        ax.barh(_nice_sched_name(sched), np.mean(top_vals) / 1e6,
+                color=color, alpha=0.8, edgecolor="black", linewidth=0.5)
+
+    ax.set_xlabel("Mean CVaR99 in Top 1% Worst Conditions (M us)", fontsize=11)
+    ax.set_title("B. Catastrophe Severity (Top 1%)", fontsize=12, fontweight="bold")
+    ax.grid(True, alpha=0.3, axis="x")
+
+    fig.suptitle("F26: CVaR99 Distribution — Catastrophe Decomposition",
+                 fontsize=15, fontweight="bold", y=1.01)
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F26_cvar_ecdf", output_dir)
+
+
+# ===================================================================
+# F27: Regime Failure Heatmap (ΔCVaR sit vs best baseline)
+# ===================================================================
+
+def plot_f27_regime_failure_heatmap(sched_df, output_dir="results/figures"):
+    """F27: Heatmap of ΔCVaR(sit_dpp - best_non_sit) by (regime, load).
+
+    Green = SIT wins, Red = SIT loses. Shows exactly where SIT helps
+    and where it doesn't.
+    """
+    df = sched_df.copy()
+
+    non_sit = df[~df["scheduler"].isin(["sit_dpp", "sit_ucb_dpp"])]
+    sit = df[df["scheduler"] == "sit_dpp"]
+
+    if len(sit) == 0 or len(non_sit) == 0:
+        print("Warning [F27]: insufficient data; skipping.")
+        return
+
+    # Find best non-SIT CVaR99 per condition
+    group_cols = [c for c in ["target", "device", "distance", "load", "regime", "seed"]
+                  if c in df.columns]
+    if not group_cols:
+        print("Warning [F27]: no grouping columns; skipping.")
+        return
+
+    best_non_sit = non_sit.groupby(group_cols)["cvar99"].min().reset_index()
+    best_non_sit.rename(columns={"cvar99": "best_non_sit_cvar99"}, inplace=True)
+
+    sit_merged = sit.merge(best_non_sit, on=group_cols, how="inner")
+    sit_merged["delta_cvar"] = sit_merged["cvar99"] - sit_merged["best_non_sit_cvar99"]
+
+    # Build pivot tables
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Panel A: by (regime, load)
+    if "regime" in sit_merged.columns and "load" in sit_merged.columns:
+        ax = axes[0]
+        pivot = sit_merged.groupby(["regime", "load"])["delta_cvar"].mean().unstack("load")
+        if len(pivot) > 0:
+            # Normalize to percentage of best non-SIT
+            pivot_pct = sit_merged.groupby(["regime", "load"]).apply(
+                lambda g: (g["cvar99"].mean() - g["best_non_sit_cvar99"].mean())
+                         / max(g["best_non_sit_cvar99"].mean(), 1) * 100
+            ).unstack("load")
+
+            cmap = plt.cm.RdYlGn_r
+            vmin_val = min(pivot_pct.min().min(), -1)
+            vmax_val = max(pivot_pct.max().max(), 1)
+            norm = TwoSlopeNorm(vcenter=0, vmin=vmin_val, vmax=vmax_val)
+            im = ax.imshow(pivot_pct.values, cmap=cmap, norm=norm, aspect="auto")
+            ax.set_xticks(range(len(pivot_pct.columns)))
+            ax.set_xticklabels([f"{x:.1f}" for x in pivot_pct.columns], fontsize=9)
+            ax.set_yticks(range(len(pivot_pct.index)))
+            ax.set_yticklabels(pivot_pct.index, fontsize=9)
+            ax.set_xlabel("Load", fontsize=11)
+            ax.set_ylabel("Regime", fontsize=11)
+            ax.set_title("A. ΔCVaR99 (%) vs Best Non-SIT\nby Regime × Load", fontsize=11)
+
+            # Annotate cells
+            for i in range(len(pivot_pct.index)):
+                for j in range(len(pivot_pct.columns)):
+                    val = pivot_pct.values[i, j]
+                    color = "white" if abs(val) > 30 else "black"
+                    sign = "+" if val > 0 else ""
+                    ax.text(j, i, f"{sign}{val:.0f}%", ha="center", va="center",
+                            fontsize=9, fontweight="bold", color=color)
+
+            plt.colorbar(im, ax=ax, shrink=0.8, label="ΔCVaR99 (%)")
+
+    # Panel B: by (distance, load)
+    if "distance" in sit_merged.columns and "load" in sit_merged.columns:
+        ax = axes[1]
+        pivot_dl = sit_merged.groupby(["distance", "load"]).apply(
+            lambda g: (g["cvar99"].mean() - g["best_non_sit_cvar99"].mean())
+                     / max(g["best_non_sit_cvar99"].mean(), 1) * 100
+        ).unstack("load")
+
+        if len(pivot_dl) > 0:
+            vmin2 = min(pivot_dl.min().min(), -1)
+            vmax2 = max(pivot_dl.max().max(), 1)
+            norm2 = TwoSlopeNorm(vcenter=0, vmin=vmin2, vmax=vmax2)
+            im2 = ax.imshow(pivot_dl.values, cmap=cmap, norm=norm2, aspect="auto")
+            ax.set_xticks(range(len(pivot_dl.columns)))
+            ax.set_xticklabels([f"{x:.1f}" for x in pivot_dl.columns], fontsize=9)
+            ax.set_yticks(range(len(pivot_dl.index)))
+            ax.set_yticklabels(pivot_dl.index, fontsize=9)
+            ax.set_xlabel("Load", fontsize=11)
+            ax.set_ylabel("Distance", fontsize=11)
+            ax.set_title("B. ΔCVaR99 (%) vs Best Non-SIT\nby Distance × Load", fontsize=11)
+
+            for i in range(len(pivot_dl.index)):
+                for j in range(len(pivot_dl.columns)):
+                    val = pivot_dl.values[i, j]
+                    color = "white" if abs(val) > 30 else "black"
+                    sign = "+" if val > 0 else ""
+                    ax.text(j, i, f"{sign}{val:.0f}%", ha="center", va="center",
+                            fontsize=9, fontweight="bold", color=color)
+
+            plt.colorbar(im2, ax=ax, shrink=0.8, label="ΔCVaR99 (%)")
+
+    fig.suptitle("F27: Regime Failure Map — Where Does SIT Win/Lose?",
+                 fontsize=15, fontweight="bold", y=1.01)
+    _add_watermark(fig)
+    _add_source_label(fig)
+    fig.tight_layout()
+    _save_fig(fig, "F27_regime_failure_heatmap", output_dir)
+
+
+# ===================================================================
 # Master generator
 # ===================================================================
 
@@ -2829,5 +3067,35 @@ def generate_all_figures(results: Dict, output_dir: str = "results/figures"):
             print(f"  F24 FAILED: {e}")
     else:
         print("  F24 skipped (no sched_results).")
+
+    # F25 - Predicted vs Realized Risk Scatter
+    if "sched_results" in results:
+        try:
+            plot_f25_predicted_vs_realized(results["sched_results"], output_dir)
+            print("  F25 done.")
+        except Exception as e:
+            print(f"  F25 FAILED: {e}")
+    else:
+        print("  F25 skipped (no sched_results).")
+
+    # F26 - CVaR ECDF Overlay (catastrophe decomposition)
+    if "sched_results" in results:
+        try:
+            plot_f26_cvar_ecdf(results["sched_results"], output_dir)
+            print("  F26 done.")
+        except Exception as e:
+            print(f"  F26 FAILED: {e}")
+    else:
+        print("  F26 skipped (no sched_results).")
+
+    # F27 - Regime Failure Heatmap (delta CVaR)
+    if "sched_results" in results:
+        try:
+            plot_f27_regime_failure_heatmap(results["sched_results"], output_dir)
+            print("  F27 done.")
+        except Exception as e:
+            print(f"  F27 FAILED: {e}")
+    else:
+        print("  F27 skipped (no sched_results).")
 
     print("Figure generation complete.")

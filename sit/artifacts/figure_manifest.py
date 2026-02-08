@@ -310,6 +310,43 @@ _FIGURE_CATALOGUE: List[Dict[str, Any]] = [
         "filters": "All conditions, SIT-DPP vs best non-SIT baseline",
         "input_data": ["data/raw/scheduling_results.parquet"],
     },
+    {
+        "figure_id": "F25",
+        "filename": "F25_predicted_vs_realized",
+        "title": "Predicted vs Realized Risk (Decision Quality)",
+        "description": (
+            "Scatter plot of decision-time predicted risk vs realized p99/CVaR99 "
+            "for SIT schedulers. Reveals estimator vs policy failures."
+        ),
+        "result_key": "sched_results",
+        "filters": "SIT-DPP and SIT-UCB-DPP conditions with predicted_risk logged",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
+    {
+        "figure_id": "F26",
+        "filename": "F26_cvar_ecdf",
+        "title": "CVaR99 Distribution (Catastrophe Decomposition)",
+        "description": (
+            "Complementary CDF of CVaR99 across conditions for each scheduler, "
+            "plus bar chart of mean top-1% catastrophe severity."
+        ),
+        "result_key": "sched_results",
+        "filters": "All conditions, all schedulers",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
+    {
+        "figure_id": "F27",
+        "filename": "F27_regime_failure_heatmap",
+        "title": "Regime Failure Heatmap (ΔCVaR vs Best Baseline)",
+        "description": (
+            "Heatmap of relative CVaR99 difference between SIT-DPP and best "
+            "non-SIT baseline, by (regime, load) and (distance, load). "
+            "Green = SIT wins, Red = SIT loses."
+        ),
+        "result_key": "sched_results",
+        "filters": "All conditions, per-cell mean ΔCVaR as percentage",
+        "input_data": ["data/raw/scheduling_results.parquet"],
+    },
 ]
 
 

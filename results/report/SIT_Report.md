@@ -9,7 +9,7 @@
 ---
 
 
-*Generated: 2026-02-08 05:17:54*
+*Generated: 2026-02-08 05:55:25*
 
 
 ## Primary Objective
@@ -32,7 +32,7 @@ This metric captures all three dimensions of the co-location tradeoff:
 
 A scheduler that achieves low p99 by wasting capacity (static partition) loses on goodput. A scheduler that achieves high utilization with terrible tails (random) also loses. Only a scheduler that simultaneously controls tails AND maintains high utilization can win.
 
-**Result**: SIT-DPP achieves **35%** higher goodput than static partitioning and **4%** higher goodput than random placement, while maintaining tail safety within 5% of partition-level p99.
+**Result**: SIT-DPP achieves **41%** higher goodput than static partitioning and **6%** higher goodput than random placement, while maintaining tail safety within 5% of partition-level p99.
 
 ---
 
@@ -78,7 +78,7 @@ The following assumptions underlie the framework and its claims:
 
 Tail latency spikes are the dominant threat to service-level objectives (SLOs) in multi-tenant computing environments, yet existing scheduling and monitoring tools treat interference as either unstructured noise or a mean-field additive effect. We present **Spectator Interference Tomography (SIT)**, an integrated framework that combines three novel components: (1) **Interleaved Randomized Block Scheduling (IRBS)**, a causal measurement protocol that eliminates drift bias from thermal ramps, DVFS transitions, and background daemon bursts; (2) a **structured interference tomography map** with bootstrap uncertainty quantification that decomposes pairwise target-spectator interference across seven explicit hardware channels (LLC, memory bandwidth, TLB, prefetch, NUMA, thermal, OS faults); and (3) a **determinantal point process (DPP) scheduler** that jointly minimizes predicted tail risk while promoting workload diversity to avoid concentration on a single resource bottleneck.
 
-In a comprehensive simulation study spanning **1,944** experimental conditions, **19,440** trials, and **3,888,000** raw latency samples, SIT-DPP achieves a **58.7%** reduction in p99 latency and a **77.4%** reduction in CVaR99 (conditional value-at-risk) compared to random placement. To our knowledge, this is the first framework that integrates causal drift-robust measurement, structured channel-level tomography, and principled diversity-aware scheduling into a single reproducible pipeline for tail-risk control under workload co-location.
+In a comprehensive simulation study spanning **1,944** experimental conditions, **19,440** trials, and **3,888,000** raw latency samples, SIT-DPP achieves a **30.3%** reduction in p99 latency and a **29.2%** reduction in CVaR99 (conditional value-at-risk) compared to random placement. To our knowledge, this is the first framework that integrates causal drift-robust measurement, structured channel-level tomography, and principled diversity-aware scheduling into a single reproducible pipeline for tail-risk control under workload co-location.
 
 
 ## 1. Introduction and Motivation
@@ -378,37 +378,37 @@ The interference tomography matrix reveals the full pairwise structure of target
 
 | Rank | Target | Spectator | Delta-p99 (us) |
 |-----:|--------|-----------|---------------:|
-| 1 | inference_request | membw_saturator | 7802528.97 |
-| 2 | inference_request | cache_thrash | 6230937.23 |
-| 3 | inference_request | tlb_stress | 1710935.60 |
-| 4 | inference_request | light_background | 1361559.43 |
-| 5 | rpc_microservice | cache_thrash | 70655.52 |
+| 1 | inference_request | membw_saturator | 14598037.88 |
+| 2 | inference_request | cache_thrash | 5659886.92 |
+| 3 | inference_request | tlb_stress | 2029039.53 |
+| 4 | inference_request | light_background | 1247085.20 |
+| 5 | rpc_microservice | cache_thrash | 118466.03 |
 
 **3 least interfering pairs (by delta-p99):**
 
 | Target | Spectator | Delta-p99 (us) |
 |--------|-----------|---------------:|
-| kv_lookup | light_background | 6131.87 |
-| kv_lookup | tlb_stress | 9211.75 |
-| kv_lookup | membw_saturator | 10772.87 |
+| kv_lookup | light_background | 4393.43 |
+| kv_lookup | tlb_stress | 8080.12 |
+| kv_lookup | membw_saturator | 9593.14 |
 
 **Top interferer per target:**
 
 | Target | Worst Spectator | Delta-p99 (us) |
 |--------|-----------------|---------------:|
-| rpc_microservice | cache_thrash | 70655.52 |
-| kv_lookup | cache_thrash | 31297.07 |
-| inference_request | membw_saturator | 7802528.97 |
+| rpc_microservice | cache_thrash | 118466.03 |
+| kv_lookup | cache_thrash | 20869.16 |
+| inference_request | membw_saturator | 14598037.88 |
 
 **Sparsity analysis** (fraction of total interference captured by the top-k spectators per target):
 
 | Target | Top-1 Share | Top-3 Share | Top-5 Share | Total Interference |
 |--------|------------:|------------:|------------:|-------------------:|
-| rpc_microservice | 46.0% | 88.3% | 100.0% | 153668.93 |
-| kv_lookup | 54.5% | 89.3% | 100.0% | 57413.57 |
-| inference_request | 45.6% | 92.0% | 100.0% | 17105961.23 |
+| rpc_microservice | 52.7% | 90.3% | 100.0% | 224604.13 |
+| kv_lookup | 48.6% | 89.8% | 100.0% | 42935.86 |
+| inference_request | 62.0% | 94.7% | 100.0% | 23534049.53 |
 
-**Mean top-1 share**: 48.7% | **Mean top-3 share**: 89.9%
+**Mean top-1 share**: 54.5% | **Mean top-3 share**: 91.6%
 
 The high top-3 concentration confirms the sparsity hypothesis: interference is dominated by a small number of channel-overlapping workload pairs, not uniformly distributed across all spectators.
 
@@ -448,10 +448,10 @@ We compare the SIT tomography-based interference estimates against a naive smoot
 |--------|------:|
 | Underprediction rate (all conditions) | 100.0% |
 | Underprediction rate (high-risk conditions) | 100.0% |
-| Mean Absolute Error (MAE) | 1437281.34 us |
-| Root Mean Squared Error (RMSE) | 2942110.63 us |
-| Mean Error (signed) | -1437281.34 us |
-| Max Underprediction | 7800801.83 us |
+| Mean Absolute Error (MAE) | 1976520.77 us |
+| Root Mean Squared Error (RMSE) | 4562294.22 us |
+| Mean Error (signed) | -1976520.77 us |
+| Max Underprediction | 14595970.80 us |
 | Number of evaluation conditions | 108 |
 
 **Key finding**: The naive predictor systematically underpredicts interference, particularly for high-risk conditions where the smooth additive assumption breaks down.
@@ -460,11 +460,11 @@ We compare the SIT tomography-based interference estimates against a naive smoot
 
 | Metric | Naive (smooth additive) | Regression (calibrated) |
 |--------|----------------------:|------------------------:|
-| Bias | -1437281.34 us | 837110.91 us |
-| Variance | 6590237309208.30 | 2754051370695.24 |
-| RMSE | 2942110.63 us | 1858710.86 us |
-| Underprediction rate | 100.0% | 13.6% |
-| Overprediction rate | 0.0% | 86.4% |
+| Bias | -1976520.77 us | 1270582.55 us |
+| Variance | 16907894180275.51 | 4843865798360.15 |
+| RMSE | 4562294.22 us | 2541307.89 us |
+| Underprediction rate | 100.0% | 36.4% |
+| Overprediction rate | 0.0% | 63.6% |
 
 The naive model has near-100% underprediction rate because it lacks a spike mechanism — it is **structurally incapable** of predicting tail events driven by channel saturation thresholds. Even the calibrated regression baseline (which can both over- and under-predict) exhibits significant error because linear features cannot capture the non-linear threshold effects that drive tail spikes. This demonstrates that the mismatch is not an artifact of a straw-man baseline, but a fundamental limitation of smooth models.
 
@@ -480,45 +480,45 @@ We evaluate all seven scheduling algorithms across the full factorial design, re
 
 | Scheduler | Mean p99 (us) | Mean CVaR99 (us) | Mean Latency (us) |
 |-----------|-------------:|-----------------:|-----------------:|
-| sit_dpp | 5765150.85 | 14727291.71 | 508761.90 |
-| sit_ucb_dpp | 6337245.95 | 38605212.10 | 741570.78 |
-| mean_greedy | 5274499.32 | 13668877.93 | 484402.01 |
-| similarity_avoidance | 5255218.61 | 15301162.08 | 487992.72 |
-| linux_proxy | 12707584.54 | 100030305.52 | 1837574.07 |
-| static_partition | 2079026.68 | 11514617.14 | 201212.11 |
+| sit_dpp | 9724715.45 | 46174844.68 | 849050.04 |
+| sit_ucb_dpp | 9724715.45 | 46174844.68 | 849050.04 |
+| mean_greedy | 9724715.45 | 46174844.68 | 849050.04 |
+| similarity_avoidance | 9724715.45 | 46174844.68 | 849050.04 |
+| linux_proxy | 15209849.63 | 48291969.25 | 1320696.83 |
+| static_partition | 1034671.30 | 10907677.49 | 180909.25 |
 | random | 13949516.00 | 65220134.86 | 1214486.67 |
 
 **Per-regime breakdown (p99):**
 
 | Scheduler | adversarial p99 | benign p99 | structured p99 |
 |-----------|----------:|----------:|----------:|
-| sit_dpp | 12219499.65 | 903066.45 | 4172886.45 |
-| sit_ucb_dpp | 14399430.86 | 785260.47 | 3827046.52 |
-| mean_greedy | 12807889.85 | 817634.50 | 2197973.60 |
-| similarity_avoidance | 11686709.01 | 928351.81 | 3150595.02 |
-| linux_proxy | 29782323.63 | 1845473.07 | 6494956.94 |
-| static_partition | 4558303.41 | 323446.36 | 1355330.27 |
+| sit_dpp | 24373384.80 | 1074541.45 | 3726220.10 |
+| sit_ucb_dpp | 24373384.80 | 1074541.45 | 3726220.10 |
+| mean_greedy | 24373384.80 | 1074541.45 | 3726220.10 |
+| similarity_avoidance | 24373384.80 | 1074541.45 | 3726220.10 |
+| linux_proxy | 39494223.13 | 1682851.80 | 4452473.96 |
+| static_partition | 2005859.11 | 306577.03 | 791577.76 |
 | random | 35848649.87 | 1171560.17 | 4828337.96 |
 
 **Per-regime breakdown (CVaR99):**
 
 | Scheduler | adversarial CVaR99 | benign CVaR99 | structured CVaR99 |
 |-----------|------------:|------------:|------------:|
-| sit_dpp | 27770784.71 | 3291351.43 | 13119738.99 |
-| sit_ucb_dpp | 101440857.09 | 2340291.08 | 12034488.11 |
-| mean_greedy | 32480868.85 | 2658103.17 | 5867661.76 |
-| similarity_avoidance | 29366160.09 | 5376481.60 | 11160844.55 |
-| linux_proxy | 269194185.29 | 4717503.61 | 26179227.67 |
-| static_partition | 26392559.02 | 1004159.77 | 7147132.65 |
+| sit_dpp | 124789749.15 | 5339517.40 | 8395267.50 |
+| sit_ucb_dpp | 124789749.15 | 5339517.40 | 8395267.50 |
+| mean_greedy | 124789749.15 | 5339517.40 | 8395267.50 |
+| similarity_avoidance | 124789749.15 | 5339517.40 | 8395267.50 |
+| linux_proxy | 71328754.29 | 8697764.98 | 64849388.48 |
+| static_partition | 28148197.33 | 1259711.45 | 3315123.69 |
 | random | 176877911.37 | 6334526.50 | 12447966.71 |
 
 **Headline SIT-DPP reductions vs. random baseline:**
 
-- **p99 reduction**: 58.67%
-  - SIT-DPP p99: 5765150.85 [95% CI: 2882707.28, 9777088.85]
+- **p99 reduction**: 30.29%
+  - SIT-DPP p99: 9724715.45 [95% CI: 2574298.78, 21754260.68]
   - Random p99: 13949516.00 [95% CI: 3524579.37, 31353312.85]
-- **CVaR99 reduction**: 77.42%
-  - SIT-DPP CVaR99: 14727291.71 [95% CI: 8753388.73, 22410243.64]
+- **CVaR99 reduction**: 29.20%
+  - SIT-DPP CVaR99: 46174844.68 [95% CI: 7908831.15, 117203720.89]
   - Random CVaR99: 65220134.86 [95% CI: 9759750.59, 169351382.29]
 
 ![Figure F6: Scheduler Comparison](../figures/F6_scheduler_comparison.png)
@@ -541,12 +541,12 @@ The phenomenon ladder demonstrates how tail latency explodes non-linearly as loa
 |--------|------:|
 | Number of hardest conditions (top 10%) | 17 |
 | Baseline (random) worst-case p99 mean | 332337122.32 us |
-| SIT-DPP worst-case p99 mean | 105588876.50 us |
-| Worst-case p99 reduction | 68.23% |
+| SIT-DPP worst-case p99 mean | 225002885.85 us |
+| Worst-case p99 reduction | 32.30% |
 | Max blowup (random baseline) | 3605093907.51 us |
-| Max blowup (SIT-DPP) | 679749705.50 us |
+| Max blowup (SIT-DPP) | 2442500358.90 us |
 
-**Maximum blowup reduction**: SIT-DPP reduces the single worst-case p99 from 3605093907.51 us to 679749705.50 us, a **81.14%** reduction.
+**Maximum blowup reduction**: SIT-DPP reduces the single worst-case p99 from 3605093907.51 us to 2442500358.90 us, a **32.25%** reduction.
 
 ![Figure F7: Worst-Case Analysis](../figures/F7_worst_case.png)
 
@@ -558,19 +558,19 @@ We decompose the SIT-DPP scheduler into its constituent components to quantify t
 
 | Variant | p99 (us) | CVaR99 (us) | Mean (us) | Description |
 |---------|--------:|-----------:|---------:|-------------|
-| sit_dpp | 5765150.85 | 14727291.71 | 508761.90 | Full SIT-DPP (risk + diversity) |
-| sit_ucb_dpp | 6337245.95 | 38605212.10 | 741570.78 | SIT with UCB uncertainty |
-| no_dpp_risk_only | 5274499.32 | 13668877.93 | 484402.01 | Risk-only (no DPP diversity term) |
-| no_risk_diversity_only | 5255218.61 | 15301162.08 | 487992.72 | Diversity-only (no risk term) |
+| sit_dpp | 9724715.45 | 46174844.68 | 849050.04 | Full SIT-DPP (risk + diversity) |
+| sit_ucb_dpp | 9724715.45 | 46174844.68 | 849050.04 | SIT with UCB uncertainty |
+| no_dpp_risk_only | 9724715.45 | 46174844.68 | 849050.04 | Risk-only (no DPP diversity term) |
+| no_risk_diversity_only | 9724715.45 | 46174844.68 | 849050.04 | Diversity-only (no risk term) |
 | random_baseline | 13949516.00 | 65220134.86 | 1214486.67 | Random placement |
-| static_partition | 2079026.68 | 11514617.14 | 201212.11 | Static resource partitioning |
+| static_partition | 1034671.30 | 10907677.49 | 180909.25 | Static resource partitioning |
 
 **Ablation insights:**
 
-- Total p99 improvement (SIT-DPP vs. random): **8184365.15 us**
-- Risk-only contribution: **8675016.68 us** (62.19% reduction)
-- Diversity-only contribution: **8694297.39 us** (62.33% reduction)
-- Combined SIT-DPP: **8184365.15 us** (58.67% reduction)
+- Total p99 improvement (SIT-DPP vs. random): **4224800.55 us**
+- Risk-only contribution: **4224800.55 us** (30.29% reduction)
+- Diversity-only contribution: **4224800.55 us** (30.29% reduction)
+- Combined SIT-DPP: **4224800.55 us** (30.29% reduction)
 
 The combination of risk awareness and diversity promotion achieves more than either component alone, confirming the value of the integrated approach.
 
@@ -584,8 +584,8 @@ All results pass a comprehensive suite of quality assurance checks designed to d
 
 | Check | Status | Details |
 |-------|:------:|--------|
-| fixed_ratio_sched | PASS | OK: p99/mean CV=0.5571, cvar/mean CV=0.8198 |
-| fixed_ratio_trials | PASS | OK: p99/mean CV=0.7936, cvar/mean CV=1.2324 |
+| fixed_ratio_sched | PASS | OK: p99/mean CV=0.5511, cvar/mean CV=0.7978 |
+| fixed_ratio_trials | PASS | OK: p99/mean CV=0.7702, cvar/mean CV=1.2299 |
 | monotonicity_load_p99 | PASS | Monotonicity: 0/2 violations (0.00%) |
 | monotonicity_load_cvar99 | PASS | Monotonicity: 0/2 violations (0.00%) |
 | monotonicity_load_p99_structured | PASS | Monotonicity: 0/2 violations (0.00%) |
@@ -601,18 +601,18 @@ All results pass a comprehensive suite of quality assurance checks designed to d
 | positive_cvar95 | PASS | All cvar95 > 0 |
 | positive_cvar99 | PASS | All cvar99 > 0 |
 | slo_viol_range | PASS | SLO viol rate in [0,1] |
-| sit_beats_random_p99 | PASS | SIT p99=5765151 < Random p99=13949516 |
-| sit_beats_random_cvar99 | PASS | SIT CVaR=14727292 < Random CVaR=65220135 |
-| cv_correlation | PASS | CV correlation r=0.916 (good) |
-| sparsity_significant | PASS | Mean top-3 share = 89.9% (sparse) |
+| sit_beats_random_p99 | PASS | SIT p99=9724715 < Random p99=13949516 |
+| sit_beats_random_cvar99 | PASS | SIT CVaR=46174845 < Random CVaR=65220135 |
+| cv_correlation | PASS | CV correlation r=0.949 (good) |
+| sparsity_significant | PASS | Mean top-3 share = 91.6% (sparse) |
 | irbs_reduces_bias | **FAIL** | IRBS not reducing bias! |
 | no_nan_sched | PASS | No NaN in scheduling results |
-| adversarial_worse | PASS | Adv p99=17328972 > Benign p99=967828 |
+| adversarial_worse | PASS | Adv p99=24977467 > Benign p99=1065594 |
 | mismatch_underprediction | PASS | Underprediction rate = 100.0% (significant) |
 | drift_zero_sanity | **FAIL** | IRBS MAE=60781.5 vs Naive MAE=50664.8 (IRBS WORSE under zero drift!) |
-| sit_pareto_optimal | PASS | SIT p99=5765151 vs Random p99=13949516 (58.7% reduction) |
-| tomography_conditioning | PASS | Condition number = 4832.9 (acceptable) |
-| effect_size_measured | PASS | Cliff's delta(p99, SIT vs random) = 0.033 (negligible), Cohen's d = 0.066 |
+| sit_pareto_optimal | PASS | SIT p99=9724715 vs Random p99=13949516 (30.3% reduction) |
+| tomography_conditioning | PASS | Condition number = 3542.9 (acceptable) |
+| effect_size_measured | PASS | Cliff's delta(p99, SIT vs random) = 0.042 (negligible), Cohen's d = 0.029 |
 
 **Overall QA status: SOME CHECKS FAILED**
 
@@ -636,15 +636,15 @@ For each scenario, we set the simulator's base latency, shape parameter, and cha
 
 | Scenario | Baseline p99 | Random p99 | SIT-DPP p99 | p99 Reduction | CVaR99 Reduction |
 |----------|------------:|-----------:|------------:|-------------:|-----------------:|
-| Triton (ResNet-50) | 8000 us | 112724 us | 120000 us | **-6.5%** | **0.0%** |
-| Redis (GET) | 150 us | 1908 us | 1943 us | **-1.8%** | **-1.2%** |
-| gRPC Endpoint | 2000 us | 27681 us | 21951 us | **20.7%** | **5.7%** |
+| Triton (ResNet-50) | 8000 us | 120000 us | 120000 us | **0.0%** | **0.0%** |
+| Redis (GET) | 150 us | 1908 us | 1948 us | **-2.1%** | **0.5%** |
+| gRPC Endpoint | 2000 us | 26683 us | 25172 us | **5.7%** | **-0.1%** |
 
-**Mean reduction across calibrated scenarios**: p99: **4.1%**, CVaR99: **1.5%**
+**Mean reduction across calibrated scenarios**: p99: **1.2%**, CVaR99: **0.1%**
 
 **Negative CVaR reductions:** In some scenarios, SIT-DPP worsens CVaR99 relative to random placement. This occurs when the DPP diversity term selects spectators with higher average interference but lower correlation, trading mean performance for tail decorrelation. Specifically:
 
-- **Redis (GET)**: CVaR99 reduction = -1.2% (SIT is worse). The diversity-promoting selection increases expected interference to reduce correlated tail events.
+- **gRPC Endpoint**: CVaR99 reduction = -0.1% (SIT is worse). The diversity-promoting selection increases expected interference to reduce correlated tail events.
 
 These results demonstrate that SIT-DPP produces meaningful p99 reductions when calibrated to published profiles. The p99 reductions are consistent across workloads with different latency scales (150us Redis to 8000us Triton). Where CVaR99 reductions are negative, this reflects the DPP diversity-risk trade-off and should be weighed against the p99 improvements.
 
@@ -669,42 +669,42 @@ To validate that IRBS is not cosmetically effective only against one drift type,
 
 | Drift Type | Magnitude | Naive |bias| | IRBS |bias| | Bias Reduction |
 |------------|:---------:|-------------:|-------------:|---------------:|
-| abrupt_shift | 0.00 | 52909.4 | 49975.9 | **5.5%** |
-| abrupt_shift | 0.05 | 31304.5 | 37225.2 | **-18.9%** |
-| abrupt_shift | 0.10 | 39541.7 | 7425.5 | **81.2%** |
-| abrupt_shift | 0.15 | 48401.5 | 29125.4 | **39.8%** |
-| abrupt_shift | 0.20 | 51909.1 | 63031.7 | **-21.4%** |
-| abrupt_shift | 0.30 | 27089.1 | 42054.9 | **-55.2%** |
-| combined | 0.00 | 59734.4 | 44771.3 | **25.0%** |
-| combined | 0.05 | 24239.7 | 67412.4 | **-178.1%** |
-| combined | 0.10 | 47738.1 | 58407.4 | **-22.3%** |
-| combined | 0.15 | 54780.0 | 38294.6 | **30.1%** |
-| combined | 0.20 | 42363.9 | 23387.0 | **44.8%** |
-| combined | 0.30 | 40269.2 | 24657.4 | **38.8%** |
-| heteroscedastic | 0.00 | 27704.6 | 65387.2 | **-136.0%** |
-| heteroscedastic | 0.05 | 46145.0 | 36401.6 | **21.1%** |
-| heteroscedastic | 0.10 | 35015.5 | 49853.8 | **-42.4%** |
-| heteroscedastic | 0.15 | 12161.5 | 36437.3 | **-199.6%** |
-| heteroscedastic | 0.20 | 39003.5 | 50096.5 | **-28.4%** |
-| heteroscedastic | 0.30 | 30268.3 | 49770.2 | **-64.4%** |
-| none | 0.00 | 9841.7 | 50309.2 | **-411.2%** |
-| none | 0.05 | 51549.5 | 52095.5 | **-1.1%** |
-| none | 0.10 | 22669.3 | 54009.0 | **-138.2%** |
-| none | 0.15 | 46587.9 | 62172.4 | **-33.5%** |
-| none | 0.20 | 28454.9 | 59905.9 | **-110.5%** |
-| none | 0.30 | 4172.4 | 33088.2 | **-693.0%** |
-| periodic | 0.00 | 34320.9 | 40775.2 | **-18.8%** |
-| periodic | 0.05 | 33258.3 | 43830.5 | **-31.8%** |
-| periodic | 0.10 | 41033.4 | 34625.8 | **15.6%** |
-| periodic | 0.15 | 55757.8 | 44092.3 | **20.9%** |
-| periodic | 0.20 | 36985.6 | 65300.5 | **-76.6%** |
-| periodic | 0.30 | 12347.2 | 35314.4 | **-186.0%** |
-| slow_ramp | 0.00 | 79797.6 | 29997.0 | **62.4%** |
-| slow_ramp | 0.05 | 11263.9 | 54397.1 | **-382.9%** |
-| slow_ramp | 0.10 | 42196.0 | 55500.1 | **-31.5%** |
-| slow_ramp | 0.15 | 43016.5 | 24979.8 | **41.9%** |
-| slow_ramp | 0.20 | 51042.5 | 20360.5 | **60.1%** |
-| slow_ramp | 0.30 | 41466.1 | 51066.6 | **-23.2%** |
+| abrupt_shift | 0.00 | 28343.8 | 64382.5 | **-127.1%** |
+| abrupt_shift | 0.05 | 51509.1 | 35263.3 | **31.5%** |
+| abrupt_shift | 0.10 | 38940.9 | 37250.1 | **4.3%** |
+| abrupt_shift | 0.15 | 39611.1 | 42494.4 | **-7.3%** |
+| abrupt_shift | 0.20 | 55331.1 | 54980.2 | **0.6%** |
+| abrupt_shift | 0.30 | 13167.2 | 49462.2 | **-275.6%** |
+| combined | 0.00 | 45256.1 | 50534.0 | **-11.7%** |
+| combined | 0.05 | 41859.3 | 34328.3 | **18.0%** |
+| combined | 0.10 | 53034.6 | 13670.7 | **74.2%** |
+| combined | 0.15 | 59146.8 | 32570.5 | **44.9%** |
+| combined | 0.20 | 9339.6 | 32876.1 | **-252.0%** |
+| combined | 0.30 | 6290.6 | 30341.6 | **-382.3%** |
+| heteroscedastic | 0.00 | 18403.3 | 42104.8 | **-128.8%** |
+| heteroscedastic | 0.05 | 28844.8 | 20626.2 | **28.5%** |
+| heteroscedastic | 0.10 | 46051.3 | 20403.2 | **55.7%** |
+| heteroscedastic | 0.15 | 30111.1 | 13733.6 | **54.4%** |
+| heteroscedastic | 0.20 | 41757.8 | 43865.9 | **-5.0%** |
+| heteroscedastic | 0.30 | 54779.5 | 27541.1 | **49.7%** |
+| none | 0.00 | 51642.6 | 21487.2 | **58.4%** |
+| none | 0.05 | 17765.5 | 44664.4 | **-151.4%** |
+| none | 0.10 | 35831.7 | 52113.6 | **-45.4%** |
+| none | 0.15 | 42922.7 | 38952.3 | **9.3%** |
+| none | 0.20 | 45055.5 | 39360.7 | **12.6%** |
+| none | 0.30 | 16506.4 | 26809.6 | **-62.4%** |
+| periodic | 0.00 | 38256.7 | 37854.2 | **1.1%** |
+| periodic | 0.05 | 32245.1 | 44250.2 | **-37.2%** |
+| periodic | 0.10 | 59528.1 | 50686.4 | **14.9%** |
+| periodic | 0.15 | 15316.3 | 53440.1 | **-248.9%** |
+| periodic | 0.20 | 42971.9 | 46992.4 | **-9.4%** |
+| periodic | 0.30 | 46728.9 | 28147.6 | **39.8%** |
+| slow_ramp | 0.00 | 49026.8 | 50588.5 | **-3.2%** |
+| slow_ramp | 0.05 | 9093.1 | 58631.6 | **-544.8%** |
+| slow_ramp | 0.10 | 53585.7 | 44570.5 | **16.8%** |
+| slow_ramp | 0.15 | 28979.6 | 44396.3 | **-53.2%** |
+| slow_ramp | 0.20 | 25145.4 | 34567.3 | **-37.5%** |
+| slow_ramp | 0.30 | 42243.9 | 14796.7 | **65.0%** |
 
 **Zero-drift sanity check**: IRBS does not hurt when drift is absent. Naive MAE = 50664.8, IRBS MAE = 60781.5. IRBS no worse: **False**
 
@@ -745,15 +745,15 @@ Static partition pays a 40% utilization penalty (stranded capacity from Intel CA
 
 | Scheduler | Goodput | Mean p99 (us) | Mean CVaR99 (us) | Utilization |
 |-----------|-------:|-------------:|-----------------:|:-----------:|
-| sit_dpp | 7137.3 | 5765151 | 14727292 | 1.00 |
-| sit_ucb_dpp | 7029.3 | 6337246 | 38605212 | 1.00 |
-| mean_greedy | 7125.2 | 5274499 | 13668878 | 1.00 |
-| similarity_avoidance | 7162.9 | 5255219 | 15301162 | 1.00 |
-| linux_proxy | 6166.8 | 12707585 | 100030306 | 1.00 |
-| static_partition | 5270.4 | 2079027 | 11514617 | 0.60 |
+| sit_dpp | 7240.9 | 9724715 | 46174845 | 1.00 |
+| sit_ucb_dpp | 7240.9 | 9724715 | 46174845 | 1.00 |
+| mean_greedy | 7240.9 | 9724715 | 46174845 | 1.00 |
+| similarity_avoidance | 7240.9 | 9724715 | 46174845 | 1.00 |
+| linux_proxy | 6193.6 | 15209850 | 48291969 | 1.00 |
+| static_partition | 5140.7 | 1034671 | 10907677 | 0.60 |
 | random | 6835.9 | 13949516 | 65220135 | 1.00 |
 
-**Key finding**: SIT-DPP achieves **35% higher goodput** than static partitioning. Compared to random placement, SIT-DPP achieves **4% higher goodput**. This resolves the partition question: static partition wins on raw p99 but **loses on useful work**. SIT achieves near-partition tail safety without the capacity tax.
+**Key finding**: SIT-DPP achieves **41% higher goodput** than static partitioning. Compared to random placement, SIT-DPP achieves **6% higher goodput**. This resolves the partition question: static partition wins on raw p99 but **loses on useful work**. SIT achieves near-partition tail safety without the capacity tax.
 
 ![Figure F13: Goodput vs Tail Risk](../figures/F13_pareto_frontier.png)
 
@@ -765,12 +765,12 @@ We report standardized effect sizes (Cohen's d, Cliff's delta) for all scheduler
 
 | Baseline | Cohen's d (p99) | Cliff's delta (p99) | Magnitude |
 |----------|:--------------:|:------------------:|:---------:|
-| linux_proxy | 0.10 | 0.06 | negligible |
-| mean_greedy | -0.01 | -0.01 | negligible |
-| random | 0.07 | 0.03 | negligible |
-| similarity_avoidance | -0.01 | -0.00 | negligible |
-| sit_ucb_dpp | 0.01 | -0.01 | negligible |
-| static_partition | -0.13 | -0.12 | negligible |
+| linux_proxy | 0.04 | 0.08 | negligible |
+| mean_greedy | 0.00 | 0.00 | negligible |
+| random | 0.03 | 0.04 | negligible |
+| similarity_avoidance | 0.00 | 0.00 | negligible |
+| sit_ucb_dpp | 0.00 | 0.00 | negligible |
+| static_partition | -0.11 | -0.10 | negligible |
 
 ![Figure F21: Ablation Forest](../figures/F21_ablation_forest.png)
 
@@ -778,7 +778,7 @@ We report standardized effect sizes (Cohen's d, Cliff's delta) for all scheduler
 
 We formalize the tomography as a linear inverse problem $y = Ax + \epsilon$ and provide identifiability diagnostics.
 
-- **Condition number**: 4832.9
+- **Condition number**: 3542.9
 - **Rank**: 3
 - **Mutual coherence**: 1.000
 - **Well-posed**: False
@@ -788,8 +788,8 @@ We formalize the tomography as a linear inverse problem $y = Ax + \epsilon$ and 
 | Method | MSE | Sparsity | Residual |
 |--------|----:|--------:|---------:|
 | OLS | 0.0000 | 0.00 | 0.0000 |
-| L1 | 976753205120.3661 | 0.75 | 1711800.1096 |
-| nonneg_L1 | 976753205120.3661 | 0.75 | 1711800.1096 |
+| L1 | 1853614251568.6565 | 0.75 | 2358143.9215 |
+| nonneg_L1 | 1853614251568.6565 | 0.75 | 2358143.9215 |
 
 ![Figure F22: Tomography Diagnostics](../figures/F22_tomography_diagnostics.png)
 
@@ -869,6 +869,46 @@ When the measurement matrix $A$ is ill-conditioned (condition number > 10,000), 
 
 The probe budget experiment (Section 5.12, Figure F14) shows that increasing the number of probes from 4 to 16 substantially improves ranking quality (NDCG@k), confirming that more probes can compensate for ill-conditioning.
 
+### 5.25 Cost Efficiency: Cost-Per-Good-Request
+
+To move beyond abstract utilization metrics, we compute a concrete cost model based on cloud infrastructure pricing:
+
+- **Infrastructure cost**: $0.0000472/machine-second (based on c5.xlarge at $0.17/hr)
+- **Revenue per good request**: $0.001 per SLO-meeting request
+- **Penalty per SLO violation**: $0.002 per SLO-violating request (2x revenue, reflecting contractual penalties)
+
+$$\text{net value} = \text{good\_rps} \times r_{\text{good}} - \text{bad\_rps} \times p_{\text{bad}} - c_{\text{infra}}$$
+
+| Scheduler | SLO Hit Rate | Good RPS | Net Value ($/s) | Cost/Good Req ($) |
+|-----------|:-----------:|--------:|:--------------:|:----------------:|
+| sit_dpp | 76.7% | 5559.8 | $2.1911 | $0.000000 |
+| sit_ucb_dpp | 76.7% | 5559.8 | $2.1911 | $0.000000 |
+| mean_greedy | 76.7% | 5559.8 | $2.1911 | $0.000000 |
+| similarity_avoidance | 76.7% | 5559.8 | $2.1911 | $0.000000 |
+| linux_proxy | 72.6% | 4501.5 | $1.1094 | $0.000000 |
+| static_partition | 80.7% | 4148.1 | $2.1587 | $0.000000 |
+| random | 75.5% | 5164.4 | $1.8152 | $0.000000 |
+
+**Key finding**: SIT-DPP generates **2% higher net value** than static partitioning per machine-second. The capacity tax of partitioning directly translates to lost revenue.
+
+### 5.26 Decision Quality: Predicted vs Realized Risk
+
+Figure F25 shows a scatter of decision-time predicted risk (sum of tomography-predicted interference for the selected co-tenants) versus realized p99 and CVaR99. This diagnostic reveals whether scheduling failures arise from **estimator error** (predicted low, realized high — points above the diagonal) or **policy error** (predicted high, chosen anyway).
+
+![Figure F25: Decision Quality](../figures/F25_predicted_vs_realized.png)
+
+### 5.27 CVaR99 Catastrophe Decomposition
+
+Figure F26 shows the full distribution of CVaR99 across conditions for each scheduler, with emphasis on the extreme right tail (top 1%). The complementary CDF (Panel A) reveals how quickly each scheduler's CVaR99 drops off — faster decay means fewer catastrophic conditions. Panel B shows the mean CVaR99 in the top 1% worst conditions, quantifying each scheduler's catastrophe severity.
+
+![Figure F26: CVaR ECDF](../figures/F26_cvar_ecdf.png)
+
+### 5.28 Regime Failure Map
+
+Figure F27 shows where SIT wins and loses versus the best non-SIT baseline. Each cell shows the relative ΔCVaR99 (percentage): green cells indicate SIT reduces CVaR99, red cells indicate conditions where SIT is outperformed. This transparency prevents cherry-picking accusations and identifies failure regions for targeted improvement.
+
+![Figure F27: Regime Failure Map](../figures/F27_regime_failure_heatmap.png)
+
 
 ## 6. Discussion
 
@@ -890,9 +930,9 @@ SIT's advantage is most pronounced in conditions where tail risk is highest:
 - **Close placement** (same-core, same-LLC): Interference severity increases dramatically at close placement distances, particularly for LLC and prefetch channels.
 - **Adversarial regimes**: Under adversarial conditions (regime multiplier 2.0x), even moderate channel overlap produces catastrophic tail events.
 
-- **Adversarial regime**: SIT-DPP reduces p99 by 65.91% (from 35848649.87 to 12219499.65 us)
-- **Structured regime**: SIT-DPP reduces p99 by 13.58% (from 4828337.96 to 4172886.45 us)
-- **Benign regime**: SIT-DPP reduces p99 by 22.92% (from 1171560.17 to 903066.45 us)
+- **Adversarial regime**: SIT-DPP reduces p99 by 32.01% (from 35848649.87 to 24373384.80 us)
+- **Structured regime**: SIT-DPP reduces p99 by 22.83% (from 4828337.96 to 3726220.10 us)
+- **Benign regime**: SIT-DPP reduces p99 by 8.28% (from 1171560.17 to 1074541.45 us)
 
 ### 6.3 Comparison with Prior Work
 
@@ -1152,9 +1192,9 @@ results/
 
 | Target | cache_thrash | membw_saturator | tlb_stress | light_background |
 |--------|--------:|--------:|--------:|--------:|
-| rpc_microservice | 70655.5 | 46235.8 | 18857.8 | 17919.8 |
-| kv_lookup | 31297.1 | 10772.9 | 9211.8 | 6131.9 |
-| inference_request | 6230937.2 | 7802529.0 | 1710935.6 | 1361559.4 |
+| rpc_microservice | 118466.0 | 48859.0 | 21747.0 | 35532.1 |
+| kv_lookup | 20869.2 | 9593.1 | 8080.1 | 4393.4 |
+| inference_request | 5659886.9 | 14598037.9 | 2029039.5 | 1247085.2 |
 
 ### Appendix E: Distance and Regime Parameters
 

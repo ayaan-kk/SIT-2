@@ -15,7 +15,7 @@
     "input_data": [
       "data/derived/drift_bias_demo.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -34,7 +34,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -55,7 +55,7 @@
       "data/derived/tomography_ci_lower.csv",
       "data/derived/tomography_ci_upper.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -74,7 +74,7 @@
     "input_data": [
       "data/derived/recovery_curve.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -93,7 +93,7 @@
     "input_data": [
       "data/derived/mismatch_scatter.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -112,7 +112,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -131,7 +131,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -150,7 +150,7 @@
     "input_data": [
       "data/derived/ablations.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -167,7 +167,7 @@
       137
     ],
     "input_data": [],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -186,7 +186,7 @@
     "input_data": [
       "data/derived/channel_decomposition.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": false
   },
   {
@@ -205,7 +205,7 @@
     "input_data": [
       "data/derived/sensitivity_analysis.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -224,7 +224,7 @@
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -243,7 +243,7 @@
     "input_data": [
       "data/derived/pareto_summary.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -262,7 +262,7 @@
     "input_data": [
       "data/derived/probe_budget_summary.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -281,7 +281,7 @@
     "input_data": [
       "data/derived/drift_summary.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -300,7 +300,7 @@
     "input_data": [
       "data/derived/anchoring_summary.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -319,7 +319,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -338,7 +338,7 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -357,7 +357,7 @@
     "input_data": [
       "data/derived/ci_coverage.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": false
   },
   {
@@ -374,7 +374,7 @@
       137
     ],
     "input_data": [],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -393,7 +393,7 @@
     "input_data": [
       "data/derived/effect_sizes.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -412,7 +412,7 @@
     "input_data": [
       "data/derived/reconstruction_comparison.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -431,7 +431,7 @@
     "input_data": [
       "data/derived/slo_throughput.csv"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   },
   {
@@ -450,7 +450,64 @@
     "input_data": [
       "data/raw/scheduling_results.parquet"
     ],
-    "git_commit": "c6b34f583a3dcb1e2c8c14ed12a63c8a12c29f68",
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
+    "data_available": true
+  },
+  {
+    "figure_id": "F25",
+    "title": "Predicted vs Realized Risk (Decision Quality)",
+    "description": "Scatter plot of decision-time predicted risk vs realized p99/CVaR99 for SIT schedulers. Reveals estimator vs policy failures.",
+    "output_path": "results/figures/F25_predicted_vs_realized.png",
+    "output_path_pdf": "results/figures/F25_predicted_vs_realized.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "SIT-DPP and SIT-UCB-DPP conditions with predicted_risk logged",
+    "seed_list": [
+      42,
+      137
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
+    "data_available": true
+  },
+  {
+    "figure_id": "F26",
+    "title": "CVaR99 Distribution (Catastrophe Decomposition)",
+    "description": "Complementary CDF of CVaR99 across conditions for each scheduler, plus bar chart of mean top-1% catastrophe severity.",
+    "output_path": "results/figures/F26_cvar_ecdf.png",
+    "output_path_pdf": "results/figures/F26_cvar_ecdf.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All conditions, all schedulers",
+    "seed_list": [
+      42,
+      137
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
+    "data_available": true
+  },
+  {
+    "figure_id": "F27",
+    "title": "Regime Failure Heatmap (\u0394CVaR vs Best Baseline)",
+    "description": "Heatmap of relative CVaR99 difference between SIT-DPP and best non-SIT baseline, by (regime, load) and (distance, load). Green = SIT wins, Red = SIT loses.",
+    "output_path": "results/figures/F27_regime_failure_heatmap.png",
+    "output_path_pdf": "results/figures/F27_regime_failure_heatmap.pdf",
+    "script_path": "sit/analysis/figures.py",
+    "config_file": "sit/experiments/configs/<config>.yaml",
+    "filters": "All conditions, per-cell mean \u0394CVaR as percentage",
+    "seed_list": [
+      42,
+      137
+    ],
+    "input_data": [
+      "data/raw/scheduling_results.parquet"
+    ],
+    "git_commit": "d0268ade4a6d60a60baf8b5357e531b2d5144d0a",
     "data_available": true
   }
 ]

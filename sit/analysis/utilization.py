@@ -423,3 +423,77 @@ def compute_slo_throughput_summary(
             })
 
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Cost-per-good-request model
+# ---------------------------------------------------------------------------
+
+#: Infrastructure cost per machine-second ($/s), based on typical cloud
+#: pricing.  A c5.xlarge costs ~$0.17/hr = $0.0000472/s.
+COST_PER_MACHINE_SECOND: float = 0.0000472
+
+#: Revenue per successfully served request (SLO-meeting request).
+#: A request that violates SLO has zero revenue (or negative via
+#: penalty).  This is a simplified model; in practice, revenue depends
+#: on the request type and SLA tier.
+REVENUE_PER_GOOD_REQUEST: float = 0.001  # $0.001 per request
+
+#: Penalty per SLO-violating request.  Models contractual penalties
+#: for exceeding tail latency SLOs (~2x revenue, conservative).
+PENALTY_PER_BAD_REQUEST: float = 0.002
+
+
+def compute_cost_efficiency(
+    sched_df: pd.DataFrame,
+    slo_threshold_us: float = 500_000.0,
+    metric: str = "p99",
+    cost_per_second: float = COST_PER_MACHINE_SECOND,
+    revenue_per_good: float = REVENUE_PER_GOOD_REQUEST,
+    penalty_per_bad: float = PENALTY_PER_BAD_REQUEST,
+) -> pd.DataFrame:
+    """Compute cost-per-good-request and net value for each scheduler.
+
+    Model:
+        - good_requests = throughput * utilization * slo_hit_rate
+        - bad_requests = throughput * utilization * (1 - slo_hit_rate)
+        - revenue = good_requests * revenue_per_good
+        - penalty = bad_requests * penalty_per_bad
+        - cost = cost_per_second (fixed infrastructure)
+        - net_value = revenue - penalty - cost
+        - cost_per_good_request = cost / max(good_requests, 1)
+
+    Returns per-scheduler summary with cost metrics.
+    """
+    df = sched_df.copy()
+
+    rows = []
+    for sched, grp in df.groupby("scheduler"):
+        slo_hit = (grp[metric] <= slo_threshold_us).astype(float)
+        hit_rate = float(slo_hit.mean())
+
+        mean_tp = float(grp["throughput"].mean()) if "throughput" in grp.columns else 0.0
+        mean_util = float(grp["utilization"].mean()) if "utilization" in grp.columns else 1.0
+
+        good_rps = mean_tp * mean_util * hit_rate
+        bad_rps = mean_tp * mean_util * (1 - hit_rate)
+
+        revenue = good_rps * revenue_per_good
+        penalty = bad_rps * penalty_per_bad
+        net_value = revenue - penalty - cost_per_second
+        cost_per_good = cost_per_second / max(good_rps, 1e-9)
+
+        rows.append({
+            "scheduler": sched,
+            "slo_hit_rate": hit_rate,
+            "good_rps": good_rps,
+            "bad_rps": bad_rps,
+            "revenue_per_s": revenue,
+            "penalty_per_s": penalty,
+            "net_value_per_s": net_value,
+            "cost_per_good_request": cost_per_good,
+            "mean_throughput": mean_tp,
+            "mean_utilization": mean_util,
+        })
+
+    return pd.DataFrame(rows)

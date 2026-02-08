@@ -421,7 +421,7 @@ def phase4_scheduling(config: Dict, all_results: Dict) -> Dict:
                             # 5. Static partition
                             schedulers["static_partition"] = (rand_sel, True, False)
 
-                            # 6. SIT-DPP (risk + diversity)
+                            # 6. SIT-DPP (risk + diversity, properly normalized)
                             if t_name in tomo_mean.index:
                                 sit_candidates = []
                                 for s in candidate_specs:
@@ -430,24 +430,40 @@ def phase4_scheduling(config: Dict, all_results: Dict) -> Dict:
                                         s_idx = wl_names.index(s)
                                         sit_candidates.append((s, risk, s_idx))
 
-                                # Greedy DPP selection
+                                # Normalize risk to [0, 1] so it's comparable to diversity
+                                risk_vals = [r for _, r, _ in sit_candidates]
+                                risk_min = min(risk_vals) if risk_vals else 0
+                                risk_max = max(risk_vals) if risk_vals else 1
+                                risk_range = risk_max - risk_min if risk_max > risk_min else 1.0
+                                sit_candidates_norm = [
+                                    (s, (r - risk_min) / risk_range, s_idx)
+                                    for s, r, s_idx in sit_candidates
+                                ]
+
+                                # Greedy DPP selection with normalized risk
                                 selected = []
                                 selected_idx = []
-                                remaining = list(sit_candidates)
+                                remaining = list(sit_candidates_norm)
                                 epsilon = 1e-6
+                                lambda_risk = config.get("scheduling", {}).get("lambda_risk", 1.0)
+                                lambda_div = config.get("scheduling", {}).get("lambda_div", 1.0)
                                 for _ in range(min(n_slots, len(remaining))):
                                     best_score = -np.inf
                                     best_item = None
-                                    for s, risk, s_idx in remaining:
-                                        # Diversity gain
+                                    for s, risk_norm, s_idx in remaining:
+                                        # Diversity gain (marginal)
                                         test_idx = selected_idx + [s_idx]
                                         K_sub = K[np.ix_(test_idx, test_idx)] + epsilon * np.eye(len(test_idx))
-                                        div_gain = np.linalg.slogdet(K_sub)[1]
-                                        # Risk penalty (lower is better)
-                                        score = div_gain - 1.0 * risk
+                                        if len(selected_idx) > 0:
+                                            K_prev = K[np.ix_(selected_idx, selected_idx)] + epsilon * np.eye(len(selected_idx))
+                                            div_gain = np.linalg.slogdet(K_sub)[1] - np.linalg.slogdet(K_prev)[1]
+                                        else:
+                                            div_gain = np.linalg.slogdet(K_sub)[1]
+                                        # Combined score: diversity reward - risk penalty
+                                        score = lambda_div * div_gain - lambda_risk * risk_norm
                                         if score > best_score:
                                             best_score = score
-                                            best_item = (s, risk, s_idx)
+                                            best_item = (s, risk_norm, s_idx)
                                     if best_item:
                                         selected.append(best_item[0])
                                         selected_idx.append(best_item[2])
@@ -457,51 +473,102 @@ def phase4_scheduling(config: Dict, all_results: Dict) -> Dict:
                                 sit_dpp_sel = rand_sel
                             schedulers["sit_dpp"] = (sit_dpp_sel, False, False)
 
-                            # 7. SIT-UCB-DPP
+                            # 7. SIT-UCB-DPP (conservative DPP with uncertainty penalty)
+                            #    Same as sit_dpp but adds a small penalty for estimation
+                            #    uncertainty. UCB acts as a SECONDARY tiebreaker, not the
+                            #    primary ranking criterion. This prevents the pathological
+                            #    case where UCB inflation forces selection of well-measured
+                            #    but truly dangerous spectators.
                             if t_name in tomo_mean.index and t_name in tomo_stderr.index:
                                 sit_ucb_candidates = []
                                 for s in candidate_specs:
                                     if s in tomo_mean.columns and s in tomo_stderr.columns and s in wl_names:
                                         mean_risk = float(tomo_mean.loc[t_name, s])
                                         stderr = float(tomo_stderr.loc[t_name, s])
-                                        ucb_risk = mean_risk + beta_ucb * stderr
                                         s_idx = wl_names.index(s)
-                                        sit_ucb_candidates.append((s, ucb_risk, s_idx))
+                                        sit_ucb_candidates.append((s, mean_risk, stderr, s_idx))
+
+                                # Normalize mean risk and stderr independently
+                                ucb_mean_vals = [mr for _, mr, _, _ in sit_ucb_candidates]
+                                ucb_stderr_vals = [se for _, _, se, _ in sit_ucb_candidates]
+                                ucb_mean_min = min(ucb_mean_vals) if ucb_mean_vals else 0
+                                ucb_mean_max = max(ucb_mean_vals) if ucb_mean_vals else 1
+                                ucb_mean_range = ucb_mean_max - ucb_mean_min if ucb_mean_max > ucb_mean_min else 1.0
+                                ucb_stderr_max = max(ucb_stderr_vals) if ucb_stderr_vals else 1.0
+                                if ucb_stderr_max <= 0:
+                                    ucb_stderr_max = 1.0
+
+                                # UCB weight: scaled down to be a tiebreaker, not primary
+                                ucb_secondary_weight = 0.2
+
+                                sit_ucb_candidates_norm = [
+                                    (s, (mr - ucb_mean_min) / ucb_mean_range,
+                                     se / ucb_stderr_max, s_idx)
+                                    for s, mr, se, s_idx in sit_ucb_candidates
+                                ]
 
                                 selected = []
                                 selected_idx = []
-                                remaining = list(sit_ucb_candidates)
+                                remaining = list(sit_ucb_candidates_norm)
                                 for _ in range(min(n_slots, len(remaining))):
                                     best_score = -np.inf
                                     best_item = None
-                                    for s, risk, s_idx in remaining:
+                                    for s, risk_norm, stderr_norm, s_idx in remaining:
                                         test_idx = selected_idx + [s_idx]
                                         K_sub = K[np.ix_(test_idx, test_idx)] + epsilon * np.eye(len(test_idx))
-                                        div_gain = np.linalg.slogdet(K_sub)[1]
-                                        score = div_gain - 1.0 * risk
+                                        if len(selected_idx) > 0:
+                                            K_prev = K[np.ix_(selected_idx, selected_idx)] + epsilon * np.eye(len(selected_idx))
+                                            div_gain = np.linalg.slogdet(K_sub)[1] - np.linalg.slogdet(K_prev)[1]
+                                        else:
+                                            div_gain = np.linalg.slogdet(K_sub)[1]
+                                        # Primary: diversity + mean risk (same as sit_dpp)
+                                        # Secondary: small uncertainty penalty (conservative)
+                                        score = (lambda_div * div_gain
+                                                 - lambda_risk * risk_norm
+                                                 - ucb_secondary_weight * stderr_norm)
                                         if score > best_score:
                                             best_score = score
-                                            best_item = (s, risk, s_idx)
+                                            best_item = (s, risk_norm, stderr_norm, s_idx)
                                     if best_item:
                                         selected.append(best_item[0])
-                                        selected_idx.append(best_item[2])
+                                        selected_idx.append(best_item[3])
                                         remaining = [x for x in remaining if x[0] != best_item[0]]
                                 sit_ucb_sel = selected if selected else rand_sel
                             else:
                                 sit_ucb_sel = rand_sel
                             schedulers["sit_ucb_dpp"] = (sit_ucb_sel, False, False)
 
-                            # Evaluate each scheduler
+                            # Evaluate each scheduler and log decisions.
+                            # Cache results for identical (selection, static_part) to
+                            # eliminate spurious CVaR differences from random seed
+                            # artifacts when two schedulers pick the same co-tenants.
+                            eval_cache = {}
+                            base_eval_seed = rng.integers(0, 2**63)
                             for sched_name, (sel, static_part, triton) in schedulers.items():
-                                eval_rng = np.random.default_rng(rng.integers(0, 2**63))
-                                result = run_scheduling_evaluation(
-                                    target, spectators_dict, device, load, dist, regime,
-                                    config["irbs"]["n_samples"], eval_rng,
-                                    sel, sched_name,
-                                    apply_static_partition=static_part,
-                                    triton_batching=triton,
-                                )
+                                cache_key = (tuple(sorted(sel)), static_part, triton)
+                                if cache_key in eval_cache:
+                                    # Reuse cached result with different scheduler name
+                                    result = dict(eval_cache[cache_key])
+                                    result["scheduler"] = sched_name
+                                else:
+                                    eval_rng = np.random.default_rng(base_eval_seed)
+                                    result = run_scheduling_evaluation(
+                                        target, spectators_dict, device, load, dist, regime,
+                                        config["irbs"]["n_samples"], eval_rng,
+                                        sel, sched_name,
+                                        apply_static_partition=static_part,
+                                        triton_batching=triton,
+                                    )
+                                    eval_cache[cache_key] = dict(result)
                                 result["seed"] = seed
+                                # Decision logging: record predicted risk vs realized
+                                if t_name in tomo_mean.index and sched_name in ("sit_dpp", "sit_ucb_dpp"):
+                                    pred_risk = sum(
+                                        float(tomo_mean.loc[t_name, s])
+                                        for s in sel if s in tomo_mean.columns
+                                    )
+                                    result["predicted_risk"] = pred_risk
+                                    result["selected_spectators"] = ",".join(sel)
                                 sched_results.append(result)
 
                             if condition_count % 50 == 0:
@@ -1158,6 +1225,7 @@ def phase8i_utilization_and_stats(config: Dict, all_results: Dict) -> Dict:
         compute_pareto_summary, compute_efficiency_metrics,
         compute_slo_admission, compute_slo_throughput_summary,
         compute_goodput, compute_goodput_summary,
+        compute_cost_efficiency,
     )
 
     derived_dir = config["output"]["derived_dir"]
@@ -1192,6 +1260,15 @@ def phase8i_utilization_and_stats(config: Dict, all_results: Dict) -> Dict:
     slo_throughput_df = compute_slo_throughput_summary(sched_df)
     slo_throughput_df.to_csv(f"{derived_dir}/slo_throughput.csv", index=False)
     all_results["slo_throughput_df"] = slo_throughput_df
+
+    # --- Cost efficiency model ---
+    cost_df = compute_cost_efficiency(sched_df)
+    cost_df.to_csv(f"{derived_dir}/cost_efficiency.csv", index=False)
+    all_results["cost_efficiency"] = cost_df
+    print("  Cost efficiency (cost-per-good-request):")
+    for _, row in cost_df.iterrows():
+        print(f"    {row['scheduler']}: net_value=${row['net_value_per_s']:.4f}/s, "
+              f"cost_per_good=${row['cost_per_good_request']:.6f}")
 
     print("  SLO-admission throughput:")
     mid_slo = 500_000

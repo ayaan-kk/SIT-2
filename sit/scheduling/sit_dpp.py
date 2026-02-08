@@ -98,6 +98,21 @@ def sit_dpp_schedule(
 
     n_pick = min(n_slots, len(candidate_spectators))
 
+    # Pre-compute per-candidate risk for normalization
+    raw_risks: Dict[str, float] = {}
+    for s in candidate_spectators:
+        raw_risks[s] = compute_predicted_risk(
+            target_name=target_name,
+            cotenant_names=[s],
+            tomography_mean=tomography_mean,
+            tomography_stderr=tomography_stderr,
+            beta=beta,
+        )
+    risk_vals = list(raw_risks.values())
+    risk_min = min(risk_vals) if risk_vals else 0.0
+    risk_max = max(risk_vals) if risk_vals else 1.0
+    risk_range = risk_max - risk_min if risk_max > risk_min else 1.0
+
     for step in range(n_pick):
         best_name: Optional[str] = None
         best_score = -np.inf
@@ -120,14 +135,9 @@ def sit_dpp_schedule(
                 # Unknown workload -- assign small neutral diversity gain
                 div_gain = 0.0
 
-            # --- Risk term ---
-            risk = compute_predicted_risk(
-                target_name=target_name,
-                cotenant_names=selected + [s],
-                tomography_mean=tomography_mean,
-                tomography_stderr=tomography_stderr,
-                beta=beta,
-            )
+            # --- Risk term (normalized to [0,1]) ---
+            risk_raw = raw_risks.get(s, 0.0)
+            risk = (risk_raw - risk_min) / risk_range
 
             # --- Combined score (higher is better) ---
             score = lambda_div * div_gain - lambda_risk * risk

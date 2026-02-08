@@ -1576,6 +1576,83 @@ def _section_results(config: Dict, all_results: Dict) -> str:
                   "ranking quality (NDCG@k), confirming that more probes can compensate "
                   "for ill-conditioning.\n\n")
 
+    # ----- 5.25 Cost Efficiency Model -----
+    parts.append("### 5.25 Cost Efficiency: Cost-Per-Good-Request\n\n")
+    parts.append("To move beyond abstract utilization metrics, we compute a "
+                  "concrete cost model based on cloud infrastructure pricing:\n\n")
+    parts.append("- **Infrastructure cost**: $0.0000472/machine-second "
+                  "(based on c5.xlarge at $0.17/hr)\n")
+    parts.append("- **Revenue per good request**: $0.001 per SLO-meeting request\n")
+    parts.append("- **Penalty per SLO violation**: $0.002 per SLO-violating request "
+                  "(2x revenue, reflecting contractual penalties)\n\n")
+    parts.append("$$\\text{net value} = \\text{good\\_rps} \\times r_{\\text{good}} "
+                  "- \\text{bad\\_rps} \\times p_{\\text{bad}} - c_{\\text{infra}}$$\n\n")
+
+    cost_df = all_results.get("cost_efficiency")
+    if cost_df is not None and len(cost_df) > 0:
+        parts.append("| Scheduler | SLO Hit Rate | Good RPS | Net Value ($/s) | "
+                      "Cost/Good Req ($) |\n")
+        parts.append("|-----------|:-----------:|--------:|:--------------:|"
+                      ":----------------:|\n")
+        sched_order = ["sit_dpp", "sit_ucb_dpp", "mean_greedy",
+                        "similarity_avoidance", "linux_proxy",
+                        "static_partition", "random"]
+        for s in sched_order:
+            row = cost_df[cost_df["scheduler"] == s]
+            if len(row) == 0:
+                continue
+            row = row.iloc[0]
+            parts.append(f"| {s} | {_fmt_pct(row.get('slo_hit_rate'))} | "
+                          f"{_fmt(row.get('good_rps'), 1)} | "
+                          f"${_fmt(row.get('net_value_per_s'), 4)} | "
+                          f"${row.get('cost_per_good_request', 0):.6f} |\n")
+        parts.append("\n")
+
+        # Highlight the key comparison
+        try:
+            sit_nv = cost_df[cost_df["scheduler"] == "sit_dpp"].iloc[0]["net_value_per_s"]
+            part_nv = cost_df[cost_df["scheduler"] == "static_partition"].iloc[0]["net_value_per_s"]
+            if part_nv > 0:
+                nv_gain = (sit_nv - part_nv) / abs(part_nv) * 100
+                parts.append(f"**Key finding**: SIT-DPP generates **{nv_gain:.0f}% higher "
+                              f"net value** than static partitioning per machine-second. "
+                              f"The capacity tax of partitioning directly translates to "
+                              f"lost revenue.\n\n")
+            else:
+                parts.append(f"SIT-DPP net value: ${sit_nv:.4f}/s vs "
+                              f"partition: ${part_nv:.4f}/s\n\n")
+        except Exception:
+            pass
+
+    # ----- 5.26 Decision Quality Diagnostics -----
+    parts.append("### 5.26 Decision Quality: Predicted vs Realized Risk\n\n")
+    parts.append("Figure F25 shows a scatter of decision-time predicted risk "
+                  "(sum of tomography-predicted interference for the selected co-tenants) "
+                  "versus realized p99 and CVaR99. This diagnostic reveals whether "
+                  "scheduling failures arise from **estimator error** (predicted low, "
+                  "realized high — points above the diagonal) or **policy error** "
+                  "(predicted high, chosen anyway).\n\n")
+    parts.append("![Figure F25: Decision Quality](../figures/F25_predicted_vs_realized.png)\n\n")
+
+    # ----- 5.27 CVaR Catastrophe Decomposition -----
+    parts.append("### 5.27 CVaR99 Catastrophe Decomposition\n\n")
+    parts.append("Figure F26 shows the full distribution of CVaR99 across conditions "
+                  "for each scheduler, with emphasis on the extreme right tail (top 1%). "
+                  "The complementary CDF (Panel A) reveals how quickly each scheduler's "
+                  "CVaR99 drops off — faster decay means fewer catastrophic conditions. "
+                  "Panel B shows the mean CVaR99 in the top 1% worst conditions, "
+                  "quantifying each scheduler's catastrophe severity.\n\n")
+    parts.append("![Figure F26: CVaR ECDF](../figures/F26_cvar_ecdf.png)\n\n")
+
+    # ----- 5.28 Regime Failure Map -----
+    parts.append("### 5.28 Regime Failure Map\n\n")
+    parts.append("Figure F27 shows where SIT wins and loses versus the best non-SIT "
+                  "baseline. Each cell shows the relative ΔCVaR99 (percentage): green "
+                  "cells indicate SIT reduces CVaR99, red cells indicate conditions "
+                  "where SIT is outperformed. This transparency prevents cherry-picking "
+                  "accusations and identifies failure regions for targeted improvement.\n\n")
+    parts.append("![Figure F27: Regime Failure Map](../figures/F27_regime_failure_heatmap.png)\n\n")
+
     return "".join(parts)
 
 
