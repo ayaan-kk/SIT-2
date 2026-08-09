@@ -538,28 +538,19 @@ def phase4_scheduling(config: Dict, all_results: Dict) -> Dict:
                                 sit_ucb_sel = rand_sel
                             schedulers["sit_ucb_dpp"] = (sit_ucb_sel, False, False)
 
-                            # Evaluate each scheduler and log decisions.
-                            # Cache results for identical (selection, static_part) to
-                            # eliminate spurious CVaR differences from random seed
-                            # artifacts when two schedulers pick the same co-tenants.
-                            eval_cache = {}
-                            base_eval_seed = rng.integers(0, 2**63)
-                            for sched_name, (sel, static_part, triton) in schedulers.items():
-                                cache_key = (tuple(sorted(sel)), static_part, triton)
-                                if cache_key in eval_cache:
-                                    # Reuse cached result with different scheduler name
-                                    result = dict(eval_cache[cache_key])
-                                    result["scheduler"] = sched_name
-                                else:
-                                    eval_rng = np.random.default_rng(base_eval_seed)
-                                    result = run_scheduling_evaluation(
-                                        target, spectators_dict, device, load, dist, regime,
-                                        config["irbs"]["n_samples"], eval_rng,
-                                        sel, sched_name,
-                                        apply_static_partition=static_part,
-                                        triton_batching=triton,
-                                    )
-                                    eval_cache[cache_key] = dict(result)
+                            # Evaluate each scheduler independently.
+                            # Each scheduler gets its own deterministic seed derived
+                            # from the condition RNG, so results are reproducible but
+                            # not artificially identical across schedulers.
+                            for sched_idx, (sched_name, (sel, static_part, triton)) in enumerate(schedulers.items()):
+                                eval_rng = np.random.default_rng(rng.integers(0, 2**63))
+                                result = run_scheduling_evaluation(
+                                    target, spectators_dict, device, load, dist, regime,
+                                    config["irbs"]["n_samples"], eval_rng,
+                                    sel, sched_name,
+                                    apply_static_partition=static_part,
+                                    triton_batching=triton,
+                                )
                                 result["seed"] = seed
                                 # Decision logging: record predicted risk vs realized
                                 if t_name in tomo_mean.index and sched_name in ("sit_dpp", "sit_ucb_dpp"):

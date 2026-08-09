@@ -20,6 +20,10 @@ spectators:
   - cache_thrash
   - membw_saturator
   - tlb_stress
+  - numa_remote
+  - prefetch_adversary
+  - io_burst
+  - pagefault_heavy
   - light_background
 
 distances:
@@ -58,7 +62,7 @@ tomography:
   k_values: [1, 3]
 
 scheduling:
-  n_slots: 3
+  n_slots: 4
   beta_ucb: 2.0
   lambda_risk: 1.0
   lambda_div: 1.0
